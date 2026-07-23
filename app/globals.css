@@ -139,6 +139,127 @@ body {
   100% { transform: scale(1); }
 }
 
+/* Typography utilities */
+.text-h1 {
+  font-family: var(--font-sora);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 36px;
+  letter-spacing: -0.4px;
+}
+
+.text-h2 {
+  font-family: var(--font-sora);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 32px;
+  letter-spacing: -0.3px;
+}
+
+.text-h3 {
+  font-family: var(--font-sora);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+.text-body {
+  font-family: var(--font-inter);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 22px;
+}
+
+.text-body-sm {
+  font-family: var(--font-inter);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+.text-overline {
+  font-family: var(--font-sora);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.text-label {
+  font-family: var(--font-inter);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.text-time {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: 0.2px;
+}
+
+.text-fare {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+  letter-spacing: 0.2px;
+}
+
+.text-fare-sm {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.text-mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  letter-spacing: 0.2px;
+}
+
+.text-display {
+  font-family: var(--font-sora);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 44px;
+  letter-spacing: -0.5px;
+}
+
+/* Elevation utilities */
+.shadow-e1 {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+
+.shadow-e2 {
+  box-shadow: 0 4px 6px rgb(0 0 0 / 0.07), 0 2px 4px rgb(0 0 0 / 0.05);
+}
+
+.shadow-e3 {
+  box-shadow: 0 12px 16px rgb(0 0 0 / 0.08), 0 4px 6px rgb(0 0 0 / 0.05);
+}
+
+.shadow-focus {
+  box-shadow: 0 0 0 3px rgb(216 33 40 / 0.22);
+}
+
+/* Animation utilities */
+.animate-slide-down {
+  animation: slide-down 0.3s ease-out forwards;
+}
+
+.animate-slide-from-right {
+  animation: slide-from-right 0.4s ease-out forwards;
+}
+
 .animate-shimmer {
   background: linear-gradient(
     90deg,
@@ -148,6 +269,19 @@ body {
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
+}
+
+/* Glassmorphism */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.glass-dark {
+  background: rgba(18, 24, 31, 0.6);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 
 /* Print styles */
