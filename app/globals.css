@@ -1,26 +1,166 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* ===== DESIGN TOKENS ===== */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Brand — Akij maroon at the dark end, FirstTrip red at the bright end */
+  --color-brand-950: #4E0C0F;
+  --color-brand-900: #6E1215;
+  --color-brand-800: #8E191C;
+  --color-brand-700: #A81A21;
+  --color-brand-600: #B01D24;
+  --color-brand-500: #D82128;
+  --color-brand-300: #EE8B8F;
+  --color-brand-100: #F9EFF0;
+  --color-brand-50: #FDF6F6;
+
+  /* Ink */
+  --color-ink-900: #12181F;
+  --color-ink-800: #263340;
+  --color-ink-700: #333333;
+  --color-ink-500: #5A6675;
+  --color-ink-400: #767676;
+  --color-ink-300: #A6AEB8;
+
+  /* Surface */
+  --color-canvas: #F1F4F8;
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #F7F8FA;
+  --color-surface-cool: #F8FBFE;
+  --color-line: #E5E7EB;
+  --color-line-strong: #DEDEDE;
+
+  /* Semantic */
+  --color-success: #0E8A5F;
+  --color-success-bg: #E7F6EF;
+  --color-urgent: #C2620A;
+  --color-urgent-bg: #FDF1E3;
+  --color-info: #1D6FB8;
+  --color-info-bg: #E5F0FA;
+  --color-danger: #9B1C1C;
+  --color-danger-bg: #FBEAEA;
+
+  /* Fare families */
+  --color-fare-saver: #6B7280;
+  --color-fare-standard: #1D6FB8;
+  --color-fare-flexi: #0E8A5F;
+  --color-fare-business: #7A5AF8;
+
+  /* Fonts — loaded via next/font, these are CSS variable references */
+  --font-sora: "Sora", sans-serif;
+  --font-inter: "Inter", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+  --font-hind: "Hind Siliguri", sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ===== BASE STYLES ===== */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-canvas);
+  color: var(--color-ink-700);
+  font-family: "Inter", sans-serif;
+  font-size: 15px;
+  line-height: 22px;
+}
+
+/* Tabular nums for prices, times, durations */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Focus ring */
+.focus-ring {
+  outline: none;
+}
+.focus-ring:focus-visible {
+  box-shadow: 0 0 0 3px rgb(216 33 40 / 0.22);
+  border-radius: 6px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-ink-300);
+  border-radius: 3px;
+}
+
+/* ===== KEYFRAMES ===== */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes draw-check {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes pulse-timer {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes slide-from-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scale-bounce {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-alt) 25%,
+    var(--color-line) 50%,
+    var(--color-surface-alt) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Print styles */
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
