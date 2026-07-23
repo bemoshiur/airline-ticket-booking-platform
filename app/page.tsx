@@ -11,8 +11,12 @@ export default function HomePage() {
   return (
     <>
       <HeroSection />
+      <StatsSection />
       <FeaturesSection />
+      <HowItWorksSection />
       <PopularRoutesSection />
+      <FeaturedDealsSection />
+      <TestimonialsSection />
       <WhyChooseUsSection />
       <CTASection />
     </>
@@ -329,6 +333,275 @@ function WhyChooseUsSection() {
               <div>
                 <h3 className="text-h3 text-ink-800 mb-2">{reason.title}</h3>
                 <p className="text-body text-ink-500">{reason.description}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function StatsSection() {
+  const stats = [
+    { number: "50M+", label: "Happy Travelers" },
+    { number: "1000+", label: "Flight Routes" },
+    { number: "4.9★", label: "Average Rating" },
+    { number: "24/7", label: "Support" },
+  ];
+
+  return (
+    <section className="bg-brand-600 py-16 px-4">
+      <div className="max-w-[1360px] mx-auto">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          {stats.map((stat, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, delay: idx * 0.1 }}
+              className="text-center"
+            >
+              <div className="text-4xl font-bold text-white mb-2">{stat.number}</div>
+              <div className="text-white/80 text-sm">{stat.label}</div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function HowItWorksSection() {
+  const steps = [
+    {
+      number: "1",
+      title: "Search",
+      description: "Enter your travel dates and preferences. Our AI finds the best options for you.",
+    },
+    {
+      number: "2",
+      title: "Compare",
+      description: "See prices from multiple airlines side-by-side. Find the perfect balance of price and timing.",
+    },
+    {
+      number: "3",
+      title: "Book",
+      description: "Secure booking with instant confirmation. Your e-ticket arrives in seconds.",
+    },
+    {
+      number: "4",
+      title: "Fly",
+      description: "Check in online and head to the airport. Enjoy your journey with peace of mind.",
+    },
+  ];
+
+  return (
+    <section className="bg-surface py-24 px-4">
+      <div className="max-w-[1360px] mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-16"
+        >
+          <h2 className="font-sora font-bold text-h1 text-ink-800 mb-3">
+            How It Works
+          </h2>
+          <p className="text-body text-ink-500 max-w-xl mx-auto">
+            Booking with SkyWing is simple and straightforward
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {steps.map((step, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: idx * 0.1 }}
+              className="relative text-center"
+            >
+              {/* Number Circle */}
+              <div className="w-16 h-16 rounded-full bg-brand-500 text-white font-bold text-2xl flex items-center justify-center mx-auto mb-4">
+                {step.number}
+              </div>
+
+              {/* Connector Line */}
+              {idx < steps.length - 1 && (
+                <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-0.5 bg-brand-200" />
+              )}
+
+              <h3 className="text-h3 text-ink-800 mb-2">{step.title}</h3>
+              <p className="text-body-sm text-ink-500">{step.description}</p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FeaturedDealsSection() {
+  const deals = [
+    {
+      route: "Dhaka → Chattogram",
+      discount: "30%",
+      originalPrice: 3800,
+      dealPrice: 2660,
+      expires: "Today",
+      badge: "Hot Deal",
+    },
+    {
+      route: "Dhaka → Sylhet",
+      discount: "25%",
+      originalPrice: 3900,
+      dealPrice: 2925,
+      expires: "2 days left",
+      badge: "Limited Time",
+    },
+    {
+      route: "Dhaka → Rajshahi",
+      discount: "20%",
+      originalPrice: 3600,
+      dealPrice: 2880,
+      expires: "5 days left",
+      badge: "Flash Sale",
+    },
+  ];
+
+  return (
+    <section className="bg-canvas py-24 px-4">
+      <div className="max-w-[1360px] mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mb-12"
+        >
+          <h2 className="font-sora font-bold text-h1 text-ink-800 mb-3">
+            ⚡ Featured Deals
+          </h2>
+          <p className="text-body text-ink-500">Limited time offers on popular routes. Book now!</p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {deals.map((deal, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: idx * 0.1 }}
+              className="relative p-6 rounded-2xl bg-white border-2 border-brand-300 hover:shadow-e3 transition-all"
+            >
+              {/* Badge */}
+              <div className="absolute -top-3 left-6">
+                <span className="inline-block px-3 py-1 rounded-full bg-brand-500 text-white text-xs font-bold">
+                  {deal.badge}
+                </span>
+              </div>
+
+              <div className="mt-4">
+                <h3 className="text-h3 text-ink-800 mb-4">{deal.route}</h3>
+
+                {/* Price */}
+                <div className="mb-4">
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <span className="text-fare text-brand-500 font-bold">৳{deal.dealPrice.toLocaleString()}</span>
+                    <span className="text-sm text-ink-400 line-through">৳{deal.originalPrice.toLocaleString()}</span>
+                  </div>
+                  <div className="inline-block px-2 py-1 rounded-lg bg-success-bg text-success text-xs font-bold">
+                    Save {deal.discount}
+                  </div>
+                </div>
+
+                {/* Expires */}
+                <div className="text-xs text-urgent mb-4">{deal.expires}</div>
+
+                {/* CTA */}
+                <Link
+                  href="/flights"
+                  className="block w-full py-2 rounded-lg bg-brand-500 text-white text-sm font-bold hover:bg-brand-600 transition-colors text-center"
+                >
+                  Book Deal
+                </Link>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TestimonialsSection() {
+  const testimonials = [
+    {
+      name: "Rahul Kumar",
+      location: "Dhaka",
+      rating: 5,
+      text: "Best flight booking app! Found amazing deals and the process was super smooth. Highly recommended!",
+      avatar: "🧑",
+    },
+    {
+      name: "Priya Sharma",
+      location: "Chattogram",
+      rating: 5,
+      text: "The customer service is excellent. They helped me with a last-minute booking and it was seamless.",
+      avatar: "👩",
+    },
+    {
+      name: "Ahmed Hassan",
+      location: "Sylhet",
+      rating: 5,
+      text: "Save so much money compared to other platforms. Love the price comparison feature!",
+      avatar: "🧔",
+    },
+  ];
+
+  return (
+    <section className="bg-surface py-24 px-4">
+      <div className="max-w-[1360px] mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-16"
+        >
+          <h2 className="font-sora font-bold text-h1 text-ink-800 mb-3">
+            What Our Customers Say
+          </h2>
+          <p className="text-body text-ink-500 max-w-xl mx-auto">
+            Join millions of happy travelers who trust SkyWing
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {testimonials.map((testimonial, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: idx * 0.1 }}
+              className="p-6 rounded-2xl bg-white border border-line hover:shadow-e2 transition-all"
+            >
+              {/* Stars */}
+              <div className="flex gap-1 mb-3">
+                {[...Array(testimonial.rating)].map((_, i) => (
+                  <span key={i} className="text-xl">⭐</span>
+                ))}
+              </div>
+
+              {/* Quote */}
+              <p className="text-body text-ink-600 mb-4 italic">"{testimonial.text}"</p>
+
+              {/* Author */}
+              <div className="flex items-center gap-3">
+                <div className="text-3xl">{testimonial.avatar}</div>
+                <div>
+                  <div className="font-semibold text-ink-800">{testimonial.name}</div>
+                  <div className="text-xs text-ink-400">{testimonial.location}</div>
+                </div>
               </div>
             </motion.div>
           ))}
