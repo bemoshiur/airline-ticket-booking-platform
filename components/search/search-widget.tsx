@@ -3,21 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Search, MapPin, Users, Plane, ChevronDown, Plus, Minus } from "lucide-react";
+import { Search, Plane } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSearchStore, type TripType, type CabinClass } from "@/lib/store/search";
-import { airports, getAirport, searchAirports } from "@/lib/mock/airports";
+import { useSearchStore, type TripType } from "@/lib/store/search";
 import { format, addDays } from "date-fns";
 import { DateRangeField } from "./date-range-field";
+import { AirportSelect } from "./airport-select";
+import { PassengerClassSelect } from "./passenger-class-select";
 
 export function SearchWidget() {
   const router = useRouter();
   const store = useSearchStore();
-  const [travellerOpen, setTravellerOpen] = useState(false);
-  const [originOpen, setOriginOpen] = useState(false);
-  const [destOpen, setDestOpen] = useState(false);
-  const [originQuery, setOriginQuery] = useState("");
-  const [destQuery, setDestQuery] = useState("");
+  const [openField, setOpenField] = useState<"origin" | "destination" | "travellers" | null>(null);
 
   const handleSearch = () => {
     if (!store.validate()) return;
@@ -46,10 +43,6 @@ export function SearchWidget() {
     router.push(`/flights?${params.toString()}`);
   };
 
-  const originResults = originQuery ? searchAirports(originQuery) : [];
-  const destResults = destQuery ? searchAirports(destQuery) : [];
-  const originAirport = getAirport(store.origin);
-  const destAirport = getAirport(store.destination);
 
   return (
     <motion.div
@@ -91,174 +84,39 @@ export function SearchWidget() {
           {/* Search Form Grid */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-6">
             {/* From */}
-            <div className="md:col-span-3 relative">
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-2">From</label>
-              <div className="relative">
-                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-500" size={20} />
-                <input
-                  type="text"
-                  value={originQuery || (originAirport?.city || "")}
-                  onChange={(e) => setOriginQuery(e.target.value)}
-                  onFocus={() => { setOriginOpen(true); setDestOpen(false); setTravellerOpen(false); }}
-                  placeholder="Departure city"
-                  className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-ink-200 text-sm font-medium focus:outline-none focus:border-brand-500 focus:bg-blue-50 transition-all"
-                />
-
-                {/* Dropdown */}
-                {originOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-brand-200 rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto"
-                  >
-                    {originResults.length > 0 ? (
-                      originResults.slice(0, 8).map((airport) => (
-                        <motion.button
-                          key={airport.code}
-                          whileHover={{ backgroundColor: "#f0f9ff" }}
-                          onClick={() => {
-                            store.setOrigin(airport.code);
-                            setOriginQuery("");
-                            setOriginOpen(false);
-                          }}
-                          className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-ink-100 last:border-b-0"
-                        >
-                          <div className="font-semibold text-ink-800">{airport.city}</div>
-                          <div className="text-xs text-ink-400">{airport.code} • {airport.name}</div>
-                        </motion.button>
-                      ))
-                    ) : (
-                      <div className="px-4 py-3 text-sm text-ink-400">Type to search airports...</div>
-                    )}
-                  </motion.div>
-                )}
-
-                {!originOpen && originAirport && (
-                  <div className="text-xs text-ink-400 mt-1">{originAirport.code}</div>
-                )}
-              </div>
-            </div>
+            <AirportSelect
+              label="From"
+              value={store.origin}
+              onSelect={store.setOrigin}
+              placeholder="Departure city"
+              variant="depart"
+              excludeCode={store.destination}
+              open={openField === "origin"}
+              onOpenChange={(open) => setOpenField(open ? "origin" : null)}
+              colSpanClassName="md:col-span-3"
+            />
 
             {/* To */}
-            <div className="md:col-span-3 relative">
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-2">To</label>
-              <div className="relative">
-                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-500 rotate-90" size={20} />
-                <input
-                  type="text"
-                  value={destQuery || (destAirport?.city || "")}
-                  onChange={(e) => setDestQuery(e.target.value)}
-                  onFocus={() => { setDestOpen(true); setOriginOpen(false); setTravellerOpen(false); }}
-                  placeholder="Arrival city"
-                  className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-ink-200 text-sm font-medium focus:outline-none focus:border-brand-500 focus:bg-blue-50 transition-all"
-                />
-
-                {/* Dropdown */}
-                {destOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-brand-200 rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto"
-                  >
-                    {destResults.length > 0 ? (
-                      destResults.slice(0, 8).map((airport) => (
-                        <motion.button
-                          key={airport.code}
-                          whileHover={{ backgroundColor: "#f0f9ff" }}
-                          onClick={() => {
-                            store.setDestination(airport.code);
-                            setDestQuery("");
-                            setDestOpen(false);
-                          }}
-                          className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-ink-100 last:border-b-0"
-                        >
-                          <div className="font-semibold text-ink-800">{airport.city}</div>
-                          <div className="text-xs text-ink-400">{airport.code} • {airport.name}</div>
-                        </motion.button>
-                      ))
-                    ) : (
-                      <div className="px-4 py-3 text-sm text-ink-400">Type to search airports...</div>
-                    )}
-                  </motion.div>
-                )}
-
-                {!destOpen && destAirport && (
-                  <div className="text-xs text-ink-400 mt-1">{destAirport.code}</div>
-                )}
-              </div>
-            </div>
+            <AirportSelect
+              label="To"
+              value={store.destination}
+              onSelect={store.setDestination}
+              placeholder="Arrival city"
+              variant="arrive"
+              excludeCode={store.origin}
+              open={openField === "destination"}
+              onOpenChange={(open) => setOpenField(open ? "destination" : null)}
+              colSpanClassName="md:col-span-3"
+            />
 
             {/* Date Range Field (One Way or Round Trip) */}
             <DateRangeField />
 
-            {/* Travellers & Cabin */}
-            <div className={cn("relative", store.tripType === "R" ? "md:col-span-2" : "md:col-span-2")}>
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-2">Passengers</label>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                onClick={() => setTravellerOpen(!travellerOpen)}
-                className="w-full px-4 py-3 rounded-xl border-2 border-ink-200 text-sm font-medium text-ink-700 hover:border-brand-300 focus:outline-none focus:border-brand-500 focus:bg-blue-50 transition-all flex items-center justify-between"
-              >
-                <div className="flex items-center gap-2">
-                  <Users size={16} className="text-brand-500" />
-                  <span>{store.travellers.adult + store.travellers.child}</span>
-                </div>
-                <ChevronDown size={16} className={cn("transition-transform", travellerOpen && "rotate-180")} />
-              </motion.button>
-
-              {travellerOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-brand-200 rounded-xl shadow-xl z-50 p-4 space-y-3"
-                >
-                  {["adult", "child", "kid", "infant"].map((type) => (
-                    <div key={type} className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-ink-700 capitalize">{type}</span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() =>
-                            store.setTravellers({
-                              ...store.travellers,
-                              [type]: Math.max(0, store.travellers[type as keyof typeof store.travellers] - 1),
-                            })
-                          }
-                          className="w-7 h-7 rounded-lg bg-ink-100 hover:bg-brand-100 flex items-center justify-center text-ink-600 hover:text-brand-600 transition-all"
-                        >
-                          <Minus size={14} />
-                        </button>
-                        <span className="w-6 text-center text-sm font-semibold text-ink-800">{store.travellers[type as keyof typeof store.travellers]}</span>
-                        <button
-                          onClick={() =>
-                            store.setTravellers({
-                              ...store.travellers,
-                              [type]: store.travellers[type as keyof typeof store.travellers] + 1,
-                            })
-                          }
-                          className="w-7 h-7 rounded-lg bg-ink-100 hover:bg-brand-100 flex items-center justify-center text-ink-600 hover:text-brand-600 transition-all"
-                        >
-                          <Plus size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </motion.div>
-              )}
-            </div>
-
-            {/* Cabin Class */}
-            <div className="md:col-span-2">
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-2">Cabin</label>
-              <select
-                value={store.cabinClass}
-                onChange={(e) => store.setCabinClass(e.target.value as CabinClass)}
-                className="w-full px-4 py-3 rounded-xl border-2 border-ink-200 text-sm font-medium focus:outline-none focus:border-brand-500 focus:bg-blue-50 transition-all cursor-pointer"
-              >
-                <option value="economy">Economy</option>
-                <option value="premium">Premium</option>
-                <option value="business">Business</option>
-              </select>
-            </div>
+            {/* Passengers & Class */}
+            <PassengerClassSelect
+              open={openField === "travellers"}
+              onOpenChange={(open) => setOpenField(open ? "travellers" : null)}
+            />
           </div>
 
           {/* Search Button */}

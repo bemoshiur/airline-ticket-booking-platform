@@ -124,6 +124,13 @@ export function searchAirports(query: string): Airport[] {
     .sort((a, b) => b.popular - a.popular);
 }
 
+export function getPopularAirports(excludeCode?: string, limit = 8): Airport[] {
+  return Array.from(airportMap.values())
+    .sort((a, b) => b.popular - a.popular)
+    .filter((a) => a.code !== excludeCode)
+    .slice(0, limit);
+}
+
 function getMisspellings(airport: Airport): string[] {
   const map: Record<string, string[]> = {
     DAC: ["dacca", "dhaka", "dahka"],
