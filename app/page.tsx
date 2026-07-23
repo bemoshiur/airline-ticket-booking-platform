@@ -1,56 +1,187 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Search, Plane, ArrowRightLeft, Users, Calendar, ChevronDown, Plus, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Plane, MapPin, Clock, DollarSign, CheckCircle, ArrowRight } from "lucide-react";
 import { SearchWidget } from "@/components/search/search-widget";
 import { format, addDays } from "date-fns";
 
 export default function HomePage() {
   return (
     <>
-      {/* Hero Section */}
       <HeroSection />
-
-      {/* Popular Routes */}
+      <FeaturesSection />
       <PopularRoutesSection />
+      <WhyChooseUsSection />
+      <CTASection />
     </>
   );
 }
 
 function HeroSection() {
   return (
-    <section className="relative min-h-[520px] flex items-start justify-center overflow-hidden">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 pb-32">
+      {/* Animated Background */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-ink-900 via-brand-950 to-ink-800" />
 
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-ink-900 via-ink-800 to-brand-950">
-        <div className="absolute inset-0 opacity-20" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-        }} />
+        {/* Animated gradient overlay */}
+        <motion.div
+          className="absolute inset-0 opacity-30"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,50 Q25,0 50,50 T100,50' stroke='%23D82128' stroke-width='0.5' fill='none' opacity='0.3'/%3E%3Cpath d='M50,0 Q75,25 50,50 T50,100' stroke='%23D82128' stroke-width='0.5' fill='none' opacity='0.3'/%3E%3C/svg%3E")`,
+            backgroundSize: "100px 100px",
+          }}
+          animate={{
+            backgroundPosition: ["0px 0px", "100px 100px"],
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+        />
+
+        {/* Floating planes animation */}
+        <motion.div
+          className="absolute top-20 right-20 text-brand-500 opacity-10"
+          animate={{ y: [0, -20, 0], x: [0, 10, 0] }}
+          transition={{ duration: 8, repeat: Infinity }}
+        >
+          <Plane size={120} />
+        </motion.div>
+        <motion.div
+          className="absolute bottom-40 left-20 text-brand-500 opacity-10"
+          animate={{ y: [0, 20, 0], x: [0, -10, 0] }}
+          transition={{ duration: 10, repeat: Infinity, delay: 1 }}
+        >
+          <Plane size={80} />
+        </motion.div>
       </div>
 
       {/* Content */}
-      <div className="relative z-10 w-full max-w-[1180px] mx-auto px-4 pt-16 pb-0">
-        {/* Headline */}
+      <div className="relative z-10 w-full max-w-[1360px] mx-auto px-4 lg:px-8">
+        {/* Main Headline */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-          className="text-center mb-8"
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center mb-12"
         >
-          <h1 className="font-sora font-bold text-[44px] leading-[50px] text-white mb-3">
-            Fly anywhere, anytime
+          <h1 className="font-sora font-bold text-display text-white mb-4 leading-tight">
+            Discover Your Next Adventure
           </h1>
-          <p className="text-white/70 text-lg max-w-xl mx-auto">
+          <p className="text-lg text-white/80 max-w-2xl mx-auto mb-2">
             Search and book flights across Bangladesh and the world at the best prices
+          </p>
+          <p className="text-brand-200 text-sm font-medium">
+            ✈️ Trusted by millions • 🌍 1000+ destinations • 💰 Best price guarantee
           </p>
         </motion.div>
 
         {/* Search Widget */}
-        <SearchWidget />
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <SearchWidget />
+        </motion.div>
+
+        {/* Trust Badges */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+          className="flex flex-wrap items-center justify-center gap-8 mt-16 text-sm text-white/70"
+        >
+          <div className="flex items-center gap-2">
+            <CheckCircle size={16} className="text-success" />
+            <span>Secure Booking</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock size={16} className="text-info" />
+            <span>24/7 Support</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <DollarSign size={16} className="text-brand-300" />
+            <span>Best Price</span>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Bottom Wave */}
+      <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-canvas to-transparent" />
+    </section>
+  );
+}
+
+function FeaturesSection() {
+  const features = [
+    {
+      icon: Plane,
+      title: "1000+ Routes",
+      description: "Fly to destinations across Bangladesh and international routes",
+      color: "text-brand-500",
+    },
+    {
+      icon: DollarSign,
+      title: "Best Prices",
+      description: "Compare prices and get the best deals on your flights",
+      color: "text-success",
+    },
+    {
+      icon: Clock,
+      title: "Fast Booking",
+      description: "Book your flight in under 2 minutes with our streamlined process",
+      color: "text-info",
+    },
+    {
+      icon: CheckCircle,
+      title: "Guaranteed Safe",
+      description: "Secure payment gateway with 100% buyer protection",
+      color: "text-urgent",
+    },
+  ];
+
+  return (
+    <section className="bg-surface py-20 px-4">
+      <div className="max-w-[1360px] mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-16"
+        >
+          <h2 className="font-sora font-bold text-h1 text-ink-800 mb-3">
+            Why Choose SkyWing
+          </h2>
+          <p className="text-body text-ink-500 max-w-xl mx-auto">
+            Experience seamless flight booking with unbeatable prices and premium service
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {features.map((feature, idx) => {
+            const Icon = feature.icon;
+            return (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: idx * 0.1 }}
+                className="group p-6 rounded-2xl border border-line bg-surface-alt hover:border-brand-300 hover:shadow-e2 transition-all hover:-translate-y-1"
+              >
+                <div className={`w-12 h-12 rounded-lg bg-brand-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform ${feature.color}`}>
+                  <Icon size={24} />
+                </div>
+                <h3 className="text-h3 text-ink-800 mb-2">{feature.title}</h3>
+                <p className="text-body-sm text-ink-500">{feature.description}</p>
+              </motion.div>
+            );
+          })}
+        </div>
       </div>
     </section>
   );
@@ -58,35 +189,87 @@ function HeroSection() {
 
 function PopularRoutesSection() {
   const popularRoutes = [
-    { from: "Dhaka", fromCode: "DAC", to: "Cox's Bazar", toCode: "CXB", price: 4170 },
-    { from: "Dhaka", fromCode: "DAC", to: "Chattogram", toCode: "CGP", price: 3800 },
-    { from: "Dhaka", fromCode: "DAC", to: "Sylhet", toCode: "ZYL", price: 3900 },
-    { from: "Dhaka", fromCode: "DAC", to: "Jashore", toCode: "JSR", price: 3700 },
-    { from: "Dhaka", fromCode: "DAC", to: "Saidpur", toCode: "SPD", price: 3700 },
-    { from: "Dhaka", fromCode: "DAC", to: "Rajshahi", toCode: "RJH", price: 3600 },
+    { from: "Dhaka", fromCode: "DAC", to: "Cox's Bazar", toCode: "CXB", price: 4170, duration: "1h 05m" },
+    { from: "Dhaka", fromCode: "DAC", to: "Chattogram", toCode: "CGP", price: 3800, duration: "50m" },
+    { from: "Dhaka", fromCode: "DAC", to: "Sylhet", toCode: "ZYL", price: 3900, duration: "1h 15m" },
+    { from: "Dhaka", fromCode: "DAC", to: "Jashore", toCode: "JSR", price: 3700, duration: "1h 00m" },
+    { from: "Dhaka", fromCode: "DAC", to: "Saidpur", toCode: "SPD", price: 3700, duration: "1h 10m" },
+    { from: "Dhaka", fromCode: "DAC", to: "Rajshahi", toCode: "RJH", price: 3600, duration: "1h 20m" },
   ];
 
   return (
     <section className="bg-canvas py-24 px-4">
-      <div className="max-w-[1180px] mx-auto">
-        <h2 className="font-sora font-bold text-h1 text-ink-800 mb-6">
-          Popular routes from Dhaka
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {popularRoutes.map((r) => (
+      <div className="max-w-[1360px] mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mb-12"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="font-sora font-bold text-h1 text-ink-800">
+              Popular Routes from Dhaka
+            </h2>
             <Link
-              key={r.toCode}
-              href={`/flights?tripType=O&itinerary=${r.fromCode}-${r.toCode}-${format(addDays(new Date(), 14), "yyyy-MM-dd")}&cabinClass=economy&adult=1&child=0&kid=0&infant=0&fareType=REGULAR`}
-              className="block p-4 rounded-lg bg-surface border border-line hover:border-brand-300 hover:shadow-e2 transition-all focus-ring"
+              href="/flights?tripType=O"
+              className="flex items-center gap-1 text-brand-500 hover:text-brand-600 text-sm font-medium transition-colors"
             >
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-overline text-ink-500">{r.fromCode}</span>
-                <Plane size={14} className="text-brand-500" />
-                <span className="text-overline text-ink-500">{r.toCode}</span>
-              </div>
-              <div className="text-body font-medium text-ink-700 mb-1">{r.from} → {r.to}</div>
-              <div className="text-sm text-ink-400">from <span className="text-fare text-brand-500 tabular-nums font-bold">৳{r.price.toLocaleString()}</span></div>
+              View all routes
+              <ArrowRight size={16} />
             </Link>
+          </div>
+          <p className="text-body text-ink-500">Explore trending destinations with unbeatable fares</p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {popularRoutes.map((r, idx) => (
+            <motion.div
+              key={r.toCode}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: idx * 0.05 }}
+            >
+              <Link
+                href={`/flights?tripType=O&itinerary=${r.fromCode}-${r.toCode}-${format(addDays(new Date(), 14), "yyyy-MM-dd")}&cabinClass=economy&adult=1&child=0&kid=0&infant=0&fareType=REGULAR`}
+                className="block h-full p-6 rounded-2xl bg-surface border border-line hover:border-brand-400 hover:shadow-e3 hover:-translate-y-1 transition-all group"
+              >
+                {/* Route Indicator */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block px-3 py-1 rounded-full bg-brand-50 text-brand-600 text-label font-semibold">
+                      {r.fromCode}
+                    </span>
+                    <Plane size={16} className="text-brand-400 rotate-90" />
+                    <span className="inline-block px-3 py-1 rounded-full bg-brand-50 text-brand-600 text-label font-semibold">
+                      {r.toCode}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Route Details */}
+                <div className="mb-4">
+                  <h3 className="text-h3 text-ink-800 mb-1">
+                    {r.from} → {r.to}
+                  </h3>
+                  <div className="flex items-center gap-1 text-sm text-ink-400">
+                    <Clock size={14} />
+                    <span>{r.duration}</span>
+                  </div>
+                </div>
+
+                {/* Price */}
+                <div className="flex items-baseline gap-1">
+                  <span className="text-ink-400 text-sm">from</span>
+                  <span className="text-fare text-brand-500 font-bold">৳{r.price.toLocaleString()}</span>
+                </div>
+
+                {/* CTA */}
+                <div className="mt-4 pt-4 border-t border-line flex items-center justify-between">
+                  <span className="text-xs text-ink-400">Book now</span>
+                  <ArrowRight size={16} className="text-brand-500 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </Link>
+            </motion.div>
           ))}
         </div>
       </div>
@@ -94,4 +277,95 @@ function PopularRoutesSection() {
   );
 }
 
+function WhyChooseUsSection() {
+  const reasons = [
+    {
+      title: "Transparent Pricing",
+      description: "No hidden fees. What you see is what you pay. Every rupee is accounted for.",
+    },
+    {
+      title: "Instant Confirmation",
+      description: "Book instantly and get your e-ticket in seconds. Start your journey immediately.",
+    },
+    {
+      title: "24/7 Support",
+      description: "Our dedicated support team is always here to help with any flight-related queries.",
+    },
+    {
+      title: "Flexible Booking",
+      description: "Modify or cancel your booking with ease. Travel on your terms.",
+    },
+  ];
 
+  return (
+    <section className="bg-surface py-24 px-4">
+      <div className="max-w-[1360px] mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-16"
+        >
+          <h2 className="font-sora font-bold text-h1 text-ink-800 mb-3">
+            How We Earn Your Trust
+          </h2>
+          <p className="text-body text-ink-500 max-w-xl mx-auto">
+            Every detail matters when it comes to your travel
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {reasons.map((reason, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, x: idx % 2 === 0 ? -20 : 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: idx * 0.1 }}
+              className="flex gap-4"
+            >
+              <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-brand-50 flex items-center justify-center">
+                <span className="text-brand-600 font-bold text-lg">{idx + 1}</span>
+              </div>
+              <div>
+                <h3 className="text-h3 text-ink-800 mb-2">{reason.title}</h3>
+                <p className="text-body text-ink-500">{reason.description}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CTASection() {
+  return (
+    <section className="relative py-24 px-4 overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-r from-brand-600 to-brand-500 opacity-90" />
+      <div className="absolute inset-0 opacity-10" style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+      }} />
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="relative z-10 max-w-[1360px] mx-auto text-center"
+      >
+        <h2 className="font-sora font-bold text-h1 text-white mb-4">
+          Ready to Take Flight?
+        </h2>
+        <p className="text-lg text-white/90 max-w-2xl mx-auto mb-8">
+          Join millions of travelers who trust SkyWing for the best flight deals
+        </p>
+        <Link
+          href="/flights"
+          className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-white text-brand-600 font-bold hover:bg-brand-50 transition-colors shadow-e3 hover:-translate-y-0.5"
+        >
+          Start Searching Now
+          <ArrowRight size={20} />
+        </Link>
+      </motion.div>
+    </section>
+  );
+}
