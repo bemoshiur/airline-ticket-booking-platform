@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Search, MapPin, Calendar, Users, Plane, ChevronDown, Plus, Minus } from "lucide-react";
+import { Search, MapPin, Users, Plane, ChevronDown, Plus, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSearchStore, type TripType, type CabinClass } from "@/lib/store/search";
 import { airports, getAirport, searchAirports } from "@/lib/mock/airports";
 import { format, addDays } from "date-fns";
+import { DateRangeField } from "./date-range-field";
 
 export function SearchWidget() {
   const router = useRouter();
@@ -187,35 +188,8 @@ export function SearchWidget() {
               </div>
             </div>
 
-            {/* Departure Date */}
-            <div className="md:col-span-2">
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-2">Departure</label>
-              <div className="relative">
-                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-500" size={20} />
-                <input
-                  type="date"
-                  value={store.departureDate}
-                  onChange={(e) => store.setDepartureDate(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-ink-200 text-sm font-medium focus:outline-none focus:border-brand-500 focus:bg-blue-50 transition-all"
-                />
-              </div>
-            </div>
-
-            {/* Return Date */}
-            {store.tripType === "R" && (
-              <div className="md:col-span-2">
-                <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-2">Return</label>
-                <div className="relative">
-                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-500" size={20} />
-                  <input
-                    type="date"
-                    value={store.returnDate || ""}
-                    onChange={(e) => store.setReturnDate(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-ink-200 text-sm font-medium focus:outline-none focus:border-brand-500 focus:bg-blue-50 transition-all"
-                  />
-                </div>
-              </div>
-            )}
+            {/* Date Range Field (One Way or Round Trip) */}
+            <DateRangeField />
 
             {/* Travellers & Cabin */}
             <div className={cn("relative", store.tripType === "R" ? "md:col-span-2" : "md:col-span-2")}>
