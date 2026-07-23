@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Search, Plane, ArrowRightLeft, Users, Calendar, ChevronDown, Plus, Minus, X } from "lucide-react";
+import { Search, MapPin, Calendar, Users, Plane, ChevronDown, Plus, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSearchStore, type TripType, type CabinClass } from "@/lib/store/search";
 import { airports, getAirport, searchAirports } from "@/lib/mock/airports";
@@ -47,196 +47,200 @@ export function SearchWidget() {
 
   const originResults = originQuery ? searchAirports(originQuery) : [];
   const destResults = destQuery ? searchAirports(destQuery) : [];
-
   const originAirport = getAirport(store.origin);
   const destAirport = getAirport(store.destination);
 
-  function s(n: number) {
-    return n !== 1 ? "s" : "";
-  }
-
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-      className="rounded-2xl shadow-lg p-6 max-w-[1180px] mx-auto -mb-20 relative z-20 border border-white"
+      className="rounded-3xl shadow-2xl p-8 max-w-5xl mx-auto -mb-20 relative z-20"
       style={{
-        background: "rgba(255, 255, 255, 0.95)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
+        background: "rgba(255, 255, 255, 0.98)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
       }}
     >
-      {/* Trip Type */}
-      <div className="flex items-center gap-4 mb-5">
+      {/* Trip Type Selector */}
+      <div className="flex gap-3 mb-8">
         {(["O", "R", "M"] as TripType[]).map((type) => {
           const labels: Record<TripType, string> = { O: "One Way", R: "Round Trip", M: "Multi City" };
           return (
-            <button
+            <motion.button
               key={type}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => store.setTripType(type)}
               className={cn(
-                "px-4 py-1.5 rounded-full text-sm font-medium transition-all focus-ring",
+                "px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-200",
                 store.tripType === type
-                  ? "bg-brand-500 text-white"
-                  : "bg-surface-alt text-ink-500 hover:bg-brand-50"
+                  ? "bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-lg"
+                  : "bg-white text-ink-600 border border-ink-200 hover:border-brand-300"
               )}
             >
               {labels[type]}
-            </button>
+            </motion.button>
           );
         })}
       </div>
 
       {store.tripType !== "M" ? (
         <>
-          {/* Field Row */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-            {/* From - Autocomplete */}
-            <div className="relative col-span-1">
-              <label className="text-label text-ink-400">From</label>
-              <input
-                type="text"
-                value={originQuery}
-                onChange={(e) => setOriginQuery(e.target.value)}
-                onFocus={() => { setOriginOpen(true); setDestOpen(false); }}
-                placeholder="Search..."
-                className="w-full px-3 py-2 rounded-lg border border-line text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white"
-              />
+          {/* Search Form Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-6">
+            {/* From */}
+            <div className="md:col-span-3 relative">
+              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-2">From</label>
+              <div className="relative">
+                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-500" size={20} />
+                <input
+                  type="text"
+                  value={originQuery || (originAirport?.city || "")}
+                  onChange={(e) => setOriginQuery(e.target.value)}
+                  onFocus={() => { setOriginOpen(true); setDestOpen(false); setTravellerOpen(false); }}
+                  placeholder="Departure city"
+                  className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-ink-200 text-sm font-medium focus:outline-none focus:border-brand-500 focus:bg-blue-50 transition-all"
+                />
 
-              {/* Autocomplete Dropdown */}
-              {originOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-line rounded-lg shadow-e3 z-50 max-h-60 overflow-y-auto">
-                  {originResults.length > 0 ? (
-                    originResults.slice(0, 6).map((airport) => (
-                      <button
-                        key={airport.code}
-                        type="button"
-                        onClick={() => {
-                          store.setOrigin(airport.code);
-                          setOriginQuery("");
-                          setOriginOpen(false);
-                        }}
-                        className="w-full text-left px-4 py-3 hover:bg-brand-50 transition-colors border-b border-line last:border-b-0 focus:outline-none"
-                      >
-                        <div className="font-medium text-ink-800">{airport.city}</div>
-                        <div className="text-xs text-ink-400">{airport.code} · {airport.name}</div>
-                      </button>
-                    ))
-                  ) : originQuery ? (
-                    <div className="px-4 py-3 text-sm text-ink-400">No airports found</div>
-                  ) : (
-                    <div className="px-4 py-3 text-sm text-ink-400">Start typing...</div>
-                  )}
-                </div>
-              )}
+                {/* Dropdown */}
+                {originOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-brand-200 rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto"
+                  >
+                    {originResults.length > 0 ? (
+                      originResults.slice(0, 8).map((airport) => (
+                        <motion.button
+                          key={airport.code}
+                          whileHover={{ backgroundColor: "#f0f9ff" }}
+                          onClick={() => {
+                            store.setOrigin(airport.code);
+                            setOriginQuery("");
+                            setOriginOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-ink-100 last:border-b-0"
+                        >
+                          <div className="font-semibold text-ink-800">{airport.city}</div>
+                          <div className="text-xs text-ink-400">{airport.code} • {airport.name}</div>
+                        </motion.button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-3 text-sm text-ink-400">Type to search airports...</div>
+                    )}
+                  </motion.div>
+                )}
 
-              {!originOpen && originAirport && (
-                <div className="text-body-sm text-ink-600 mt-1">{originAirport.code}</div>
-              )}
+                {!originOpen && originAirport && (
+                  <div className="text-xs text-ink-400 mt-1">{originAirport.code}</div>
+                )}
+              </div>
             </div>
 
-            {/* Swap */}
-            <div className="flex items-end justify-center pb-1">
-              <button
-                onClick={() => {
-                  const temp = store.origin;
-                  store.setOrigin(store.destination);
-                  store.setDestination(temp);
-                }}
-                className="p-2 rounded-lg hover:bg-brand-50 transition-colors"
-              >
-                <ArrowRightLeft size={18} className="text-brand-500" />
-              </button>
-            </div>
+            {/* To */}
+            <div className="md:col-span-3 relative">
+              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-2">To</label>
+              <div className="relative">
+                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-500 rotate-90" size={20} />
+                <input
+                  type="text"
+                  value={destQuery || (destAirport?.city || "")}
+                  onChange={(e) => setDestQuery(e.target.value)}
+                  onFocus={() => { setDestOpen(true); setOriginOpen(false); setTravellerOpen(false); }}
+                  placeholder="Arrival city"
+                  className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-ink-200 text-sm font-medium focus:outline-none focus:border-brand-500 focus:bg-blue-50 transition-all"
+                />
 
-            {/* To - Autocomplete */}
-            <div className="relative col-span-1">
-              <label className="text-label text-ink-400">To</label>
-              <input
-                type="text"
-                value={destQuery}
-                onChange={(e) => setDestQuery(e.target.value)}
-                onFocus={() => { setDestOpen(true); setOriginOpen(false); }}
-                placeholder="Search..."
-                className="w-full px-3 py-2 rounded-lg border border-line text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white"
-              />
+                {/* Dropdown */}
+                {destOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-brand-200 rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto"
+                  >
+                    {destResults.length > 0 ? (
+                      destResults.slice(0, 8).map((airport) => (
+                        <motion.button
+                          key={airport.code}
+                          whileHover={{ backgroundColor: "#f0f9ff" }}
+                          onClick={() => {
+                            store.setDestination(airport.code);
+                            setDestQuery("");
+                            setDestOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-ink-100 last:border-b-0"
+                        >
+                          <div className="font-semibold text-ink-800">{airport.city}</div>
+                          <div className="text-xs text-ink-400">{airport.code} • {airport.name}</div>
+                        </motion.button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-3 text-sm text-ink-400">Type to search airports...</div>
+                    )}
+                  </motion.div>
+                )}
 
-              {/* Autocomplete Dropdown */}
-              {destOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-line rounded-lg shadow-e3 z-50 max-h-60 overflow-y-auto">
-                  {destResults.length > 0 ? (
-                    destResults.slice(0, 6).map((airport) => (
-                      <button
-                        key={airport.code}
-                        type="button"
-                        onClick={() => {
-                          store.setDestination(airport.code);
-                          setDestQuery("");
-                          setDestOpen(false);
-                        }}
-                        className="w-full text-left px-4 py-3 hover:bg-brand-50 transition-colors border-b border-line last:border-b-0 focus:outline-none"
-                      >
-                        <div className="font-medium text-ink-800">{airport.city}</div>
-                        <div className="text-xs text-ink-400">{airport.code} · {airport.name}</div>
-                      </button>
-                    ))
-                  ) : destQuery ? (
-                    <div className="px-4 py-3 text-sm text-ink-400">No airports found</div>
-                  ) : (
-                    <div className="px-4 py-3 text-sm text-ink-400">Start typing...</div>
-                  )}
-                </div>
-              )}
-
-              {!destOpen && destAirport && (
-                <div className="text-body-sm text-ink-600 mt-1">{destAirport.code}</div>
-              )}
+                {!destOpen && destAirport && (
+                  <div className="text-xs text-ink-400 mt-1">{destAirport.code}</div>
+                )}
+              </div>
             </div>
 
             {/* Departure Date */}
-            <div className="col-span-1">
-              <label className="text-label text-ink-400">Departure</label>
-              <input
-                type="date"
-                value={store.departureDate}
-                onChange={(e) => store.setDepartureDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-line text-sm focus:outline-none focus:border-brand-500"
-              />
-            </div>
-
-            {/* Return Date (Round Trip Only) */}
-            {store.tripType === "R" && (
-              <div className="col-span-1">
-                <label className="text-label text-ink-400">Return</label>
+            <div className="md:col-span-2">
+              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-2">Departure</label>
+              <div className="relative">
+                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-500" size={20} />
                 <input
                   type="date"
-                  value={store.returnDate || ""}
-                  onChange={(e) => store.setReturnDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-line text-sm focus:outline-none focus:border-brand-500"
+                  value={store.departureDate}
+                  onChange={(e) => store.setDepartureDate(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-ink-200 text-sm font-medium focus:outline-none focus:border-brand-500 focus:bg-blue-50 transition-all"
                 />
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Second Row - Travelers & Cabin */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-            {/* Travelers */}
-            <div className="relative">
-              <label className="text-label text-ink-400">Travellers</label>
-              <button
+            {/* Return Date */}
+            {store.tripType === "R" && (
+              <div className="md:col-span-2">
+                <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-2">Return</label>
+                <div className="relative">
+                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-500" size={20} />
+                  <input
+                    type="date"
+                    value={store.returnDate || ""}
+                    onChange={(e) => store.setReturnDate(e.target.value)}
+                    className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-ink-200 text-sm font-medium focus:outline-none focus:border-brand-500 focus:bg-blue-50 transition-all"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Travellers & Cabin */}
+            <div className={cn("relative", store.tripType === "R" ? "md:col-span-2" : "md:col-span-2")}>
+              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-2">Passengers</label>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
                 onClick={() => setTravellerOpen(!travellerOpen)}
-                className="w-full px-3 py-2 rounded-lg border border-line text-sm text-ink-700 hover:bg-surface-alt transition-colors flex items-center justify-between"
+                className="w-full px-4 py-3 rounded-xl border-2 border-ink-200 text-sm font-medium text-ink-700 hover:border-brand-300 focus:outline-none focus:border-brand-500 focus:bg-blue-50 transition-all flex items-center justify-between"
               >
-                <span>{store.travellers.adult + store.travellers.child} Traveller{s(store.travellers.adult + store.travellers.child)}</span>
+                <div className="flex items-center gap-2">
+                  <Users size={16} className="text-brand-500" />
+                  <span>{store.travellers.adult + store.travellers.child}</span>
+                </div>
                 <ChevronDown size={16} className={cn("transition-transform", travellerOpen && "rotate-180")} />
-              </button>
+              </motion.button>
 
               {travellerOpen && (
-                <div className="absolute top-full left-0 mt-1 w-full bg-surface border border-line rounded-lg shadow-e3 z-40 p-3 space-y-2">
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-brand-200 rounded-xl shadow-xl z-50 p-4 space-y-3"
+                >
                   {["adult", "child", "kid", "infant"].map((type) => (
                     <div key={type} className="flex items-center justify-between">
-                      <span className="text-sm text-ink-600 capitalize">{type}</span>
+                      <span className="text-sm font-medium text-ink-700 capitalize">{type}</span>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() =>
@@ -245,11 +249,11 @@ export function SearchWidget() {
                               [type]: Math.max(0, store.travellers[type as keyof typeof store.travellers] - 1),
                             })
                           }
-                          className="w-6 h-6 rounded-full hover:bg-brand-50 flex items-center justify-center text-sm"
+                          className="w-7 h-7 rounded-lg bg-ink-100 hover:bg-brand-100 flex items-center justify-center text-ink-600 hover:text-brand-600 transition-all"
                         >
                           <Minus size={14} />
                         </button>
-                        <span className="w-4 text-center text-sm font-medium">{store.travellers[type as keyof typeof store.travellers]}</span>
+                        <span className="w-6 text-center text-sm font-semibold text-ink-800">{store.travellers[type as keyof typeof store.travellers]}</span>
                         <button
                           onClick={() =>
                             store.setTravellers({
@@ -257,56 +261,45 @@ export function SearchWidget() {
                               [type]: store.travellers[type as keyof typeof store.travellers] + 1,
                             })
                           }
-                          className="w-6 h-6 rounded-full hover:bg-brand-50 flex items-center justify-center text-sm"
+                          className="w-7 h-7 rounded-lg bg-ink-100 hover:bg-brand-100 flex items-center justify-center text-ink-600 hover:text-brand-600 transition-all"
                         >
                           <Plus size={14} />
                         </button>
                       </div>
                     </div>
                   ))}
-                </div>
+                </motion.div>
               )}
             </div>
 
             {/* Cabin Class */}
-            <div>
-              <label className="text-label text-ink-400">Cabin</label>
+            <div className="md:col-span-2">
+              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-2">Cabin</label>
               <select
                 value={store.cabinClass}
                 onChange={(e) => store.setCabinClass(e.target.value as CabinClass)}
-                className="w-full px-3 py-2 rounded-lg border border-line text-sm focus:outline-none focus:border-brand-500"
+                className="w-full px-4 py-3 rounded-xl border-2 border-ink-200 text-sm font-medium focus:outline-none focus:border-brand-500 focus:bg-blue-50 transition-all cursor-pointer"
               >
                 <option value="economy">Economy</option>
                 <option value="premium">Premium</option>
                 <option value="business">Business</option>
               </select>
             </div>
-
-            {/* Fare Type */}
-            <div>
-              <label className="text-label text-ink-400">Fare</label>
-              <select
-                value={store.fareType}
-                onChange={(e) => store.setFareType(e.target.value as "REGULAR" | "STUDENT")}
-                className="w-full px-3 py-2 rounded-lg border border-line text-sm focus:outline-none focus:border-brand-500"
-              >
-                <option value="REGULAR">Regular</option>
-                <option value="STUDENT">Student</option>
-              </select>
-            </div>
           </div>
 
           {/* Search Button */}
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02, boxShadow: "0 20px 40px rgba(216, 33, 40, 0.3)" }}
+            whileTap={{ scale: 0.98 }}
             onClick={handleSearch}
-            className="w-full py-3 rounded-lg bg-brand-500 text-white font-bold hover:bg-brand-600 transition-colors flex items-center justify-center gap-2"
+            className="w-full py-4 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 text-white font-bold hover:from-brand-600 hover:to-brand-700 transition-all shadow-lg flex items-center justify-center gap-2 text-lg"
           >
-            <Search size={18} />
+            <Search size={20} />
             Search Flights
-          </button>
+          </motion.button>
         </>
       ) : (
-        <div className="text-center text-ink-400 py-6">Multi-city search coming soon</div>
+        <div className="text-center text-ink-400 py-8 text-lg">Multi-city search coming soon</div>
       )}
     </motion.div>
   );
