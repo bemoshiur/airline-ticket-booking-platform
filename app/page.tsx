@@ -25,19 +25,47 @@ export default function HomePage() {
 
 function HeroSection() {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 pb-32 bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        {/* Gradient Orbs */}
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 pb-32">
+      {/* Hero Background with Gradient */}
+      <div className="absolute inset-0">
+        {/* Base Gradient Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700" />
+
+        {/* Animated SVG Background Elements */}
+        <svg className="absolute inset-0 w-full h-full opacity-20" preserveAspectRatio="none">
+          <defs>
+            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="0.5" opacity="0.2" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid)" />
+        </svg>
+
+        {/* Floating Planes Animation */}
         <motion.div
-          className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-brand-400 to-brand-600 rounded-full opacity-10 blur-3xl"
-          animate={{ x: [0, 30, 0], y: [0, 20, 0] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-        />
+          className="absolute top-20 right-10 text-white opacity-20"
+          animate={{ y: [0, -30, 0], x: [0, 20, 0], rotate: [0, 10, 0] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <Plane size={150} strokeWidth={0.5} />
+        </motion.div>
+
         <motion.div
-          className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-indigo-400 to-blue-600 rounded-full opacity-10 blur-3xl"
-          animate={{ x: [0, -30, 0], y: [0, -20, 0] }}
-          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          className="absolute bottom-40 left-5 text-white opacity-15"
+          animate={{ y: [0, 30, 0], x: [0, -15, 0], rotate: [0, -15, 0] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+        >
+          <Plane size={120} strokeWidth={0.5} />
+        </motion.div>
+
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-600/30 to-purple-900/50" />
+
+        {/* Light effect */}
+        <motion.div
+          className="absolute top-0 right-0 w-96 h-96 bg-white opacity-5 rounded-full blur-3xl"
+          animate={{ scale: [1, 1.2, 1], opacity: [0.05, 0.1, 0.05] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
         />
       </div>
 
@@ -45,70 +73,78 @@ function HeroSection() {
       <div className="relative z-10 w-full max-w-[1360px] mx-auto px-4 lg:px-8">
         {/* Main Headline */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className="text-center mb-12"
         >
-          <h1 className="font-sora font-bold text-display text-transparent bg-clip-text bg-gradient-to-r from-brand-600 via-brand-500 to-indigo-600 mb-4 leading-tight">
+          <motion.div
+            animate={{ y: [0, -5, 0] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            className="mb-4 inline-block"
+          >
+            <Plane size={48} className="text-white opacity-80" />
+          </motion.div>
+
+          <h1 className="font-sora font-bold text-6xl md:text-7xl text-white mb-4 leading-tight drop-shadow-lg">
             Discover Your Next Adventure
           </h1>
-          <p className="text-xl text-ink-600 max-w-2xl mx-auto mb-3 font-light">
-            Search and book flights across Bangladesh and the world at the best prices
+          <p className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto mb-4 font-light drop-shadow-md">
+            Explore the world with confidence — Book flights at unbeatable prices
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-ink-500">
-            <div className="flex items-center gap-2">
+
+          {/* Trust Indicators */}
+          <div className="flex flex-wrap items-center justify-center gap-8 text-sm text-white/80 mb-8">
+            <motion.div whileHover={{ scale: 1.1 }} className="flex items-center gap-2 backdrop-blur-sm bg-white/10 px-4 py-2 rounded-full">
               <span className="text-xl">✈️</span>
-              <span className="font-medium">Trusted by millions</span>
-            </div>
-            <div className="text-ink-300">•</div>
-            <div className="flex items-center gap-2">
+              <span className="font-medium">50M+ Travelers</span>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.1 }} className="flex items-center gap-2 backdrop-blur-sm bg-white/10 px-4 py-2 rounded-full">
               <span className="text-xl">🌍</span>
-              <span className="font-medium">1000+ destinations</span>
-            </div>
-            <div className="text-ink-300">•</div>
-            <div className="flex items-center gap-2">
+              <span className="font-medium">1000+ Destinations</span>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.1 }} className="flex items-center gap-2 backdrop-blur-sm bg-white/10 px-4 py-2 rounded-full">
               <span className="text-xl">💰</span>
-              <span className="font-medium">Best price guarantee</span>
-            </div>
+              <span className="font-medium">Best Price Guarantee</span>
+            </motion.div>
           </div>
         </motion.div>
 
         {/* Search Widget */}
         <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          initial={{ opacity: 0, y: 50, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
         >
           <SearchWidget />
         </motion.div>
 
-        {/* Trust Badges */}
+        {/* Security Badges */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.5 }}
-          className="flex flex-wrap items-center justify-center gap-8 mt-16 text-sm"
+          transition={{ duration: 0.8, delay: 0.6 }}
+          className="flex flex-wrap items-center justify-center gap-6 mt-12 text-sm text-white/70"
         >
-          <div className="flex items-center gap-2 text-success font-medium">
-            <CheckCircle size={16} />
+          <div className="flex items-center gap-2">
+            <CheckCircle size={18} className="text-green-300" />
             <span>Secure Booking</span>
           </div>
-          <div className="text-ink-200">|</div>
-          <div className="flex items-center gap-2 text-info font-medium">
-            <Clock size={16} />
+          <div className="text-white/30">|</div>
+          <div className="flex items-center gap-2">
+            <Clock size={18} className="text-blue-300" />
             <span>24/7 Support</span>
           </div>
-          <div className="text-ink-200">|</div>
-          <div className="flex items-center gap-2 text-brand-600 font-medium">
-            <DollarSign size={16} />
-            <span>Best Price</span>
+          <div className="text-white/30">|</div>
+          <div className="flex items-center gap-2">
+            <DollarSign size={18} className="text-yellow-300" />
+            <span>Best Price Guarantee</span>
           </div>
         </motion.div>
       </div>
 
-      {/* Bottom Transition */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent" />
+      {/* Bottom Wave Transition */}
+      <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-white via-white/50 to-transparent" />
     </section>
   );
 }
