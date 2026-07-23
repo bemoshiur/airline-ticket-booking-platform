@@ -4,6 +4,7 @@ import "./globals.css";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { ToastProvider } from "@/components/ui/toast";
+import { MotionProvider } from "@/components/motion-provider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -48,11 +49,13 @@ export default function RootLayout({
       className={`${inter.variable} ${sora.variable} ${ibmPlexMono.variable} ${hindSiliguri.variable}`}
     >
       <body className="min-h-screen flex flex-col antialiased">
-        <ToastProvider>
-          <Header />
-          <main className="flex-1">{children}</main>
-          <Footer />
-        </ToastProvider>
+        <MotionProvider>
+          <ToastProvider>
+            <Header />
+            <main className="flex-1">{children}</main>
+            <Footer />
+          </ToastProvider>
+        </MotionProvider>
       </body>
     </html>
   );
