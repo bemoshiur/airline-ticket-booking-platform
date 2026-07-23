@@ -64,6 +64,20 @@ body {
   font-family: "Inter", sans-serif;
   font-size: 15px;
   line-height: 22px;
+  transition: background-color 0.3s ease;
+}
+
+/* Smooth transitions */
+* {
+  transition-property: background-color, border-color, color, opacity;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+
+button, a {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
 }
 
 /* Tabular nums for prices, times, durations */

@@ -25,43 +25,20 @@ export default function HomePage() {
 
 function HeroSection() {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 pb-32">
-      {/* Animated Background */}
-      <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-ink-900 via-brand-950 to-ink-800" />
-
-        {/* Animated gradient overlay */}
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 pb-32 bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        {/* Gradient Orbs */}
         <motion.div
-          className="absolute inset-0 opacity-30"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,50 Q25,0 50,50 T100,50' stroke='%23D82128' stroke-width='0.5' fill='none' opacity='0.3'/%3E%3Cpath d='M50,0 Q75,25 50,50 T50,100' stroke='%23D82128' stroke-width='0.5' fill='none' opacity='0.3'/%3E%3C/svg%3E")`,
-            backgroundSize: "100px 100px",
-          }}
-          animate={{
-            backgroundPosition: ["0px 0px", "100px 100px"],
-          }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: "linear",
-          }}
+          className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-brand-400 to-brand-600 rounded-full opacity-10 blur-3xl"
+          animate={{ x: [0, 30, 0], y: [0, 20, 0] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
         />
-
-        {/* Floating planes animation */}
         <motion.div
-          className="absolute top-20 right-20 text-brand-500 opacity-10"
-          animate={{ y: [0, -20, 0], x: [0, 10, 0] }}
-          transition={{ duration: 8, repeat: Infinity }}
-        >
-          <Plane size={120} />
-        </motion.div>
-        <motion.div
-          className="absolute bottom-40 left-20 text-brand-500 opacity-10"
-          animate={{ y: [0, 20, 0], x: [0, -10, 0] }}
-          transition={{ duration: 10, repeat: Infinity, delay: 1 }}
-        >
-          <Plane size={80} />
-        </motion.div>
+          className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-indigo-400 to-blue-600 rounded-full opacity-10 blur-3xl"
+          animate={{ x: [0, -30, 0], y: [0, -20, 0] }}
+          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+        />
       </div>
 
       {/* Content */}
@@ -70,25 +47,38 @@ function HeroSection() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className="text-center mb-12"
         >
-          <h1 className="font-sora font-bold text-display text-white mb-4 leading-tight">
+          <h1 className="font-sora font-bold text-display text-transparent bg-clip-text bg-gradient-to-r from-brand-600 via-brand-500 to-indigo-600 mb-4 leading-tight">
             Discover Your Next Adventure
           </h1>
-          <p className="text-lg text-white/80 max-w-2xl mx-auto mb-2">
+          <p className="text-xl text-ink-600 max-w-2xl mx-auto mb-3 font-light">
             Search and book flights across Bangladesh and the world at the best prices
           </p>
-          <p className="text-brand-200 text-sm font-medium">
-            ✈️ Trusted by millions • 🌍 1000+ destinations • 💰 Best price guarantee
-          </p>
+          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-ink-500">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">✈️</span>
+              <span className="font-medium">Trusted by millions</span>
+            </div>
+            <div className="text-ink-300">•</div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🌍</span>
+              <span className="font-medium">1000+ destinations</span>
+            </div>
+            <div className="text-ink-300">•</div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">💰</span>
+              <span className="font-medium">Best price guarantee</span>
+            </div>
+          </div>
         </motion.div>
 
         {/* Search Widget */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
         >
           <SearchWidget />
         </motion.div>
@@ -97,26 +87,28 @@ function HeroSection() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          className="flex flex-wrap items-center justify-center gap-8 mt-16 text-sm text-white/70"
+          transition={{ duration: 0.8, delay: 0.5 }}
+          className="flex flex-wrap items-center justify-center gap-8 mt-16 text-sm"
         >
-          <div className="flex items-center gap-2">
-            <CheckCircle size={16} className="text-success" />
+          <div className="flex items-center gap-2 text-success font-medium">
+            <CheckCircle size={16} />
             <span>Secure Booking</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Clock size={16} className="text-info" />
+          <div className="text-ink-200">|</div>
+          <div className="flex items-center gap-2 text-info font-medium">
+            <Clock size={16} />
             <span>24/7 Support</span>
           </div>
-          <div className="flex items-center gap-2">
-            <DollarSign size={16} className="text-brand-300" />
+          <div className="text-ink-200">|</div>
+          <div className="flex items-center gap-2 text-brand-600 font-medium">
+            <DollarSign size={16} />
             <span>Best Price</span>
           </div>
         </motion.div>
       </div>
 
-      {/* Bottom Wave */}
-      <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-canvas to-transparent" />
+      {/* Bottom Transition */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent" />
     </section>
   );
 }

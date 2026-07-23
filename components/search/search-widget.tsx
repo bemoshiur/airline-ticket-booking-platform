@@ -59,8 +59,13 @@ export function SearchWidget() {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.32, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-      className="glass rounded-2xl shadow-e3 p-6 max-w-[1180px] mx-auto -mb-20 relative z-20 border border-white border-opacity-20"
+      transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+      className="rounded-2xl shadow-lg p-6 max-w-[1180px] mx-auto -mb-20 relative z-20 border border-white"
+      style={{
+        background: "rgba(255, 255, 255, 0.95)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+      }}
     >
       {/* Trip Type */}
       <div className="flex items-center gap-4 mb-5">
