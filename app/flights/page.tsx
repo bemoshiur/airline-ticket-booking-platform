@@ -177,7 +177,7 @@ function FlightsContent() {
 
   if (!origin || !dest) {
     return (
-      <div className="max-w-[1360px] mx-auto px-4 py-20 text-center">
+      <div className="max-w-[1680px] mx-auto px-4 py-20 text-center">
         <h1 className="text-h1 font-sora font-bold text-ink-800 mb-4">No search parameters found</h1>
         <p className="text-body text-ink-400 mb-6">Please search for flights first.</p>
         <Link href="/" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-brand-500 text-white font-medium hover:bg-brand-600 transition-colors">
@@ -191,7 +191,7 @@ function FlightsContent() {
   const destAirport = getAirport(dest);
 
   return (
-    <div className="max-w-[1360px] mx-auto px-4 lg:px-8 py-6">
+    <div className="max-w-[1680px] mx-auto px-4 lg:px-8 py-6">
       {/* Collapsed search bar */}
       <div className="flex items-center gap-3 mb-6 p-4 bg-surface border border-line rounded-lg shadow-e1">
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -458,9 +458,9 @@ function FlightsContent() {
 
           {/* Results */}
           {loading ? (
-            <div className="space-y-4">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(272px,1fr))] gap-5 items-start">
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="h-[132px] rounded-lg bg-surface border border-line animate-shimmer" />
+                <div key={i} className="h-[276px] rounded-[14px] bg-surface border border-line animate-shimmer" />
               ))}
             </div>
           ) : filteredResults.length === 0 ? (
@@ -476,7 +476,7 @@ function FlightsContent() {
               </button>
             </div>
           ) : (
-            <motion.div className="space-y-4" layout>
+            <motion.div className="grid grid-cols-[repeat(auto-fill,minmax(272px,1fr))] gap-5 items-start" layout>
               <AnimatePresence mode="popLayout">
               {filteredResults.map((flight, idx) => (
                 <FlightCard

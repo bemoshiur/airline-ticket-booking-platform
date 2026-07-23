@@ -50,6 +50,9 @@
   --font-inter: "Inter", sans-serif;
   --font-mono: "IBM Plex Mono", monospace;
   --font-hind: "Hind Siliguri", sans-serif;
+
+  /* Radii per surface class */
+  --radius-card: 14px;
 }
 
 /* ===== BASE STYLES ===== */

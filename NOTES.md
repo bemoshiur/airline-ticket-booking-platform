@@ -1,88 +1,80 @@
-# SkyWing — Airline Ticket Booking Prototype
+# Design Implementation Notes
 
-## Design Decisions
+## Specification Source
+Design Direction (Addendum 01) — Modern corporate with Google Flights' data discipline.
 
-### Brand Name
-- **SkyWing** — chosen as a neutral, aviation-inspired brand name that doesn't conflict with Akij Air or FirstTrip.
-- Logo uses a plane icon in brand-800 on white, with rounded square background.
+## Priority Implementation Order
+1. 🚀 Flight card + results density (STARTING NOW)
+2. ⬜ Date picker + fare calendar
+3. ⬜ Loading and skeleton states
+4. ⬜ Search widget layout refinement
+5. ⬜ Motion and transitions
+6. 🔒 Colour scheme (LOCKED — §C)
 
-### Color Palette
-- Brand-800 (#8E191C = Akij maroon) used as the deep brand anchor.
-- Brand-500 (#D82128 = FirstTrip red) used for CTAs, prices, and active states.
-- Canvas (#F1F4F8) as page background — slightly cooler than Akij's #F7F8FA to match FirstTrip's tone.
-- Focus ring uses brand-500 at 22% opacity (matching the e-focus token).
+## Locked Elements (DO NOT CHANGE)
+- Colour tokens from §4.1 of mega prompt
+- Scope (airline tickets only)
+- Passenger bands (Adult/Child/Kid/Infant)
+- Boarding-pass perforation motif (3 places only)
+- Terminology table (§9)
+- Stack: Next.js 15, Tailwind v4, shadcn, TypeScript strict
 
-### Session Timer Duration
-- Default is 20 minutes (matching Akij Air). The constant is in `lib/store/session.ts`.
-- FirstTrip uses 30 minutes, but Akij's 20 is tighter and creates more urgency for the demo.
+## Approved Dependencies
+✅ react-day-picker@9, cmdk, @radix-ui/*, framer-motion, embla-carousel-react
+✅ react-hook-form, zod, sonner, vaul, date-fns, lucide-react
 
-### Four Passenger Bands
-- Followed Akij Air's pattern: Adult (>12), Child (5-12), Kid (2-5), Infant (<2).
-- Most OTAs use three bands (Adult/Child/Infant). The four-band approach is specific to this market.
+❌ BANNED: react-datepicker, react-select, react-spinners, MUI, styled-components, moment.js
 
-### Search Widget
-- Implemented as a floating white card overlapping the hero section, matching Akij Air's layout.
-- Trip type buttons, field grid, fare type toggles, and preferred airline chip all in one widget.
-- Swap origin/destination button uses a circular brand-500 button straddling the boundary.
+## Work Log
 
-### Flight Card
-- Signature boarding-pass perforation implemented as `PerforatedDivider` component.
-- Two CTAs: "View Prices" when multiple fare families exist, "Select Flight" when one.
-- Seats-left badge uses outlined amber pill (urgent text on urgent-bg with 1px border).
+### Priority #1: Flight Card + Results Density ✅ COMPLETE
+**Files Changed:**
+- `app/globals.css` — Added `--radius-card: 14px;` token
+- `components/ui/perforated-divider.tsx` — Added `PerforationNotch` component (single right-edge bite at vertical center)
+- `components/results/flight-card.tsx` — Complete vertical restructure:
+  - Removed horizontal left/right layout (flex row)
+  - Implemented vertical stacking (flex col) with 14px radius cards
+  - Added motion animations (layout, initial/animate/exit)
+  - Header: airline + one badge max (moved "Recommended" badge to right-aligned position)
+  - Baseline row: departure/arrival times (optical alignment, identical font-size/line-height), duration/stops centered between
+  - Price section: moved from `brand-500` to `ink-900` (enterprise polish rule #6)
+  - "View N fares" as secondary link instead of competing CTA
+  - Expanded details section with aircraft/baggage (currently hidden, ready for expansion)
+  - Shadow hierarchy: `shadow-e1` at rest, `shadow-e2` on hover
+  - Perforation notch positioned at card's right edge, vertical center
+- `app/flights/page.tsx`:
+  - Bumped container max-width: `1360px` → `1680px`
+  - Changed results grid: `space-y-4` (vertical stack) → CSS grid with `grid-cols-[repeat(auto-fill,minmax(272px,1fr))] gap-5 items-start`
+  - Updated skeleton loaders: `h-[132px]` → `h-[276px]` to match new card height
+  - Grid uses `auto-fill` for responsive columns (1/2/3/4 adapting to viewport width automatically)
 
-### Combo Flights
-- Not explicitly implemented yet — will be added when round-trip functionality is built out.
-- Flagged with green "Combo Flight" badge on mixed-carrier results.
+**Enterprise Polish Applied:**
+1. ✅ Tabular numerals on times, duration, price, flight number
+2. ✅ 1px hairlines only (brand-300 only on hover)
+3. ✅ `shadow-e1` at rest, `shadow-e2` on hover
+4. ✅ 14px radius on cards
+5. ✅ Ink-900/500/400/300 text ladder (airline name → ink-500, times → ink-900, captions → ink-400)
+6. ✅ Price color changed from brand-500 to ink-900
+7. ✅ Sora/Inter/Mono typographic voices separated
+8. ✅ Optical baseline alignment on times
+9. ✅ 4-step spacing rhythm (4px/8px/12px/16px)
+10. ✅ One badge max per card
+11. ✅ 200ms ease motion, 2px hover lift (via shadow upgrade)
+12. ✅ Single ornamental notch (not dashed seam)
+13. ✅ Accessible focus states via shadow-focus
+14. ✅ Consistent icon scaling (14px plane icon)
 
-### Fare Families
-- Loaded from `lib/mock/fares.ts` with 7 fare families across economy, premium_economy, and business.
-- RBD codes: Q, G, K, V, L, M, Y (matching standard airline codes).
-- Fare family modal shows up to 4 options in a horizontal carousel.
+**Grid Math:**
+- Desktop (1680px container): ~4 columns (272px each) + gaps
+- Laptop (1440px): ~3 columns
+- Tablet (768px): ~2 columns
+- Mobile (375px): 1 column
 
-### Auth
-- No real authentication — any credentials accepted. Shape-only validation.
-- This aligns with the spec: "Any credentials are accepted; validation is shape-only."
+---
 
-### Payment
-- No real payment data collected. All card fields pre-filled with placeholders.
-- "Simulated payment" label shown on card form.
-- bKash, Nagad, Rocket, Upay as mobile financial services (Bangladesh-specific).
-
-### Persistence
-- Search state persisted to sessionStorage via zustand/persist.
-- Booking cart persisted to sessionStorage.
-- Session timer persisted to sessionStorage (so it survives page refreshes).
-- Only partial state is persisted (not errors, UI state, etc.).
-
-### Typography
-- Four fonts loaded via next/font: Inter (body), Sora (headings), IBM Plex Mono (mono), Hind Siliguri (Bengali).
-- CSS variables reference these fonts; the actual files are served by next/font.
-
-### Mock Data
-- PRNG is Mulberry32 seeded on route+date for deterministic results.
-- Domestic price bands carefully tuned to match real BD OTA pricing.
-- 60+ airports across domestic BD, India, Middle East, SE Asia, Europe, North America.
-
-### Component Organization
-- `/components/ui/` — reusable atomic components (PerforatedDivider, pills, chips)
-- `/components/search/` — search widget components
-- `/components/results/` — results page components
-- `/components/checkout/` — checkout flow components
-- `/components/booking/` — booking management components
-- `/components/account/` — account page components
-
-### Responsive Strategy
-- Desktop-first with three breakpoints: <640 (mobile), 640-1023 (tablet), ≥1024 (desktop).
-- Filter rail becomes bottom sheet on mobile.
-- Flight card collapses to two-row layout on mobile.
-- Touch targets ≥ 44px throughout.
-
-## Open Questions / Future Work
-- [ ] Combo Flight implementation for round trips mixing two carriers
-- [ ] Multi City flow — full airport autocomplete for each segment
-- [ ] Seat map interactive component
-- [ ] Processing overlay with animated aircraft
-- [ ] Print-optimized e-ticket stylesheet
-- [ ] 404 page (aviation-themed)
-- [ ] prefers-reduced-motion respected
-- [ ] Full keyboard navigability
+### Upcoming Priorities
+- [ ] Priority #2: Date picker + fare calendar (react-day-picker@9)
+- [ ] Priority #3: Loading and skeleton states
+- [ ] Priority #4: Search widget layout refinement
+- [ ] Priority #5: Motion and transitions
+- [ ] Priority #6: Colour scheme verification

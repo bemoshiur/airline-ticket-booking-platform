@@ -44,3 +44,21 @@ export function PerforatedDivider({ className, height = 132 }: PerforatedDivider
     </div>
   );
 }
+
+/**
+ * Single ornamental notch on card's right edge — boarding-pass signature motif.
+ * Positioned at vertical center; semicircular bite exposes canvas background.
+ */
+export function PerforationNotch({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn("absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full", className)}
+      style={{
+        right: -6,
+        backgroundColor: "var(--color-canvas)",
+        boxShadow: "inset 0 1px 2px rgb(0 0 0 / 0.08)",
+      }}
+      aria-hidden="true"
+    />
+  );
+}
