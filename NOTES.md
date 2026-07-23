@@ -27,6 +27,28 @@ Design Direction (Addendum 01) — Modern corporate with Google Flights' data di
 
 ## Work Log
 
+### Priority #2: Date Picker + Fare Calendar ✅ COMPLETE
+**Files Changed:**
+- `lib/utils/currency.ts` — Added `formatFareCompact()` (৳8.6k format)
+- `lib/utils/fare-calendar-data.ts` — New `buildFareMap()` helper for 2-month span
+- `components/search/fare-day-button.tsx` — Custom day cell: date + fare display
+- `components/search/fare-calendar.tsx` — DayPicker wrapper with `FareCalendarContext`, mode="single"|"range"
+- `components/search/date-range-field.tsx` — Radix Popover shell, triggers, footer, store commits
+- `components/search/search-widget.tsx` — Integrated `DateRangeField`, removed raw date inputs
+- `package.json` — Added `react-day-picker@^9.8.0`
+
+**Design & Architecture:**
+- Radix Popover (portalled, handles collisions, focus/escape/click-outside)
+- Single shared calendar with mode="single" (One Way) or mode="range" (Round Trip)
+- Transient state (open, pending dates) in DateRangeField; committed state in Zustand
+- Auto-commit when range complete, 150ms delay to show highlight before closing
+- Performance: memoized fare map by [origin, destination, monthKey]
+- Styling: brand-500 + white for selected endpoints, brand-100 + ink-900 for range middle
+- Fares displayed as compact format: 8600 → "৳8.6k" below date number
+- Two-month view (current + next month) with month navigation
+
+---
+
 ### Priority #1: Flight Card + Results Density ✅ COMPLETE
 **Files Changed:**
 - `app/globals.css` — Added `--radius-card: 14px;` token
