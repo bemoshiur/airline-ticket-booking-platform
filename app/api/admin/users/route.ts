@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, users } from "@/lib/db";
 import { auth } from "@/auth";
-import { eq, desc, or, ilike } from "drizzle-orm";
+import { eq, desc, or, and, ilike } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,29 +16,35 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams;
     const search = searchParams.get("search");
-    const role = searchParams.get("role");
-    const status = searchParams.get("status");
-    const limit = parseInt(searchParams.get("limit") || "50");
-    const offset = parseInt(searchParams.get("offset") || "0");
+    const roleParam = searchParams.get("role");
+    const statusParam = searchParams.get("status");
+    const limitParam = parseInt(searchParams.get("limit") || "50");
+    const offsetParam = parseInt(searchParams.get("offset") || "0");
 
-    // Build where conditions
-    let whereConditions = undefined;
+    // Clamp pagination
+    const limit = Math.min(Math.max(1, limitParam || 50), 200);
+    const offset = Math.max(0, offsetParam || 0);
+
+    // Build where conditions - combine all with AND
+    const conditions: any[] = [];
     if (search) {
-      whereConditions = or(
-        ilike(users.email, `%${search}%`),
-        ilike(users.fullName, `%${search}%`)
+      conditions.push(
+        or(
+          ilike(users.email, `%${search}%`),
+          ilike(users.fullName, `%${search}%`)
+        )
       );
     }
-    if (role) {
-      whereConditions = whereConditions
-        ? undefined // TODO: Combine conditions properly
-        : eq(users.role, role as any);
+    if (roleParam) {
+      conditions.push(eq(users.role, roleParam as any));
     }
-    if (status) {
-      whereConditions = whereConditions
-        ? undefined
-        : eq(users.status, status as any);
+    if (statusParam) {
+      conditions.push(eq(users.status, statusParam as any));
     }
+
+    // Combine all conditions with AND
+    const whereConditions =
+      conditions.length > 0 ? and(...conditions) : undefined;
 
     const userList = await db
       .select({
@@ -97,6 +103,33 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json(
         { error: "Invalid status" },
         { status: 400 }
+      );
+    }
+
+    // Prevent self-suspension
+    if (userId === session.user.id && newStatus !== "active") {
+      return NextResponse.json(
+        { error: "Cannot change your own status" },
+        { status: 403 }
+      );
+    }
+
+    // Get target user to check role
+    const targetUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!targetUser[0]) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Prevent suspending other superadmins (only active status allowed)
+    if (targetUser[0].role === "superadmin" && newStatus !== "active") {
+      return NextResponse.json(
+        { error: "Cannot change superadmin status" },
+        { status: 403 }
       );
     }
 

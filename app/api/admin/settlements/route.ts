@@ -65,21 +65,44 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Update commissions to paid
+    if (!bankTransferRef || typeof bankTransferRef !== "string") {
+      return NextResponse.json(
+        { error: "Bank transfer reference required" },
+        { status: 400 }
+      );
+    }
+
+    // Update commissions to paid (only if pending)
+    const results = [];
     for (const id of settlementIds) {
-      await db
+      const result = await db
         .update(agencyCommissions)
         .set({
           status: "paid",
           paidAt: new Date(),
         })
-        .where(eq(agencyCommissions.id, id));
+        .where(
+          and(
+            eq(agencyCommissions.id, id),
+            eq(agencyCommissions.status, "pending") // Guard: only pay pending
+          )
+        )
+        .returning({ id: agencyCommissions.id });
+
+      if (result.length === 0) {
+        results.push({ id, status: "skipped", reason: "not_pending" });
+      } else {
+        results.push({ id, status: "paid" });
+      }
     }
+
+    const paidCount = results.filter((r) => r.status === "paid").length;
 
     return NextResponse.json(
       {
-        message: `${settlementIds.length} settlements processed`,
+        message: `${paidCount} settlements processed`,
         bankTransferRef,
+        results,
         paidAt: new Date(),
       },
       { status: 200 }
