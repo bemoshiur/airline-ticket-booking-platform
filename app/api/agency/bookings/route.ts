@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, bookings, flights, airlines } from "@/lib/db";
+import { db, bookings, flights, airlines, bookingStatusEnum } from "@/lib/db";
 import { auth } from "@/auth";
 import { eq, and, desc } from "drizzle-orm";
+import { INVALID, parseEnumParam } from "@/lib/db/enum-param";
 
 export async function GET(req: NextRequest) {
   try {
@@ -31,10 +32,15 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(Math.max(1, limitParam || 50), 100);
     const offset = Math.max(0, offsetParam || 0);
 
+    const bookingStatus = parseEnumParam(status, bookingStatusEnum.enumValues);
+    if (bookingStatus === INVALID) {
+      return NextResponse.json({ error: "Unknown status" }, { status: 400 });
+    }
+
     // Always scoped to the caller's own org; status is an optional narrowing.
     const conditions = [eq(bookings.orgId, session.user.orgId)];
-    if (status) {
-      conditions.push(eq(bookings.status, status as any));
+    if (bookingStatus) {
+      conditions.push(eq(bookings.status, bookingStatus));
     }
     const whereConditions = and(...conditions);
 

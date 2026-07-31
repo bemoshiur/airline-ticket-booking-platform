@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A newer push to the same branch makes an in-flight run obsolete.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        # Advisory, not blocking. There are ~20 pre-existing errors in the UI
+        # layer (React hooks rules in components/search, app/account, and
+        # lib/hooks) that predate the current work. Blocking on them would make
+        # CI red on its first run, which teaches everyone to ignore it.
+        # Remove continue-on-error once those are cleared — the gate is only
+        # worth having when it can actually go green.
+        continue-on-error: true
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        # The build needs these to be present, not valid — nothing here reaches
+        # a real service. Real values live in the deployment environment.
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          NEXTAUTH_SECRET: ci-build-secret-not-used-at-runtime
+          NEXTAUTH_URL: http://localhost:3000
+          STRIPE_SECRET_KEY: sk_test_ci_placeholder
+          STRIPE_WEBHOOK_SECRET: whsec_ci_placeholder
+          CRON_SECRET: ci-placeholder
+        run: npm run build
+
+  migrations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check the schema matches the committed migrations
+        # `drizzle-kit generate` is a no-op when they agree. If it writes a new
+        # file, someone edited lib/db/schema.ts without generating a migration
+        # and deploys would drift from the code.
+        run: |
+          before=$(ls drizzle/*.sql | wc -l)
+          npx drizzle-kit generate
+          after=$(ls drizzle/*.sql | wc -l)
+          if [ "$before" != "$after" ]; then
+            echo "::error::schema.ts has changes with no migration."
+            echo "Run 'npm run db:generate' and commit the result."
+            git --no-pager diff --stat
+            exit 1
+          fi
+          echo "Schema and migrations agree."
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci

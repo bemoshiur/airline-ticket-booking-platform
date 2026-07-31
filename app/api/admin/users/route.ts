@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, users } from "@/lib/db";
+import { db, users, userRoleEnum, userStatusEnum } from "@/lib/db";
 import { auth } from "@/auth";
-import { eq, desc, or, and, ilike } from "drizzle-orm";
+import { eq, desc, or, and, ilike, type SQL } from "drizzle-orm";
+import { INVALID, parseEnumParam } from "@/lib/db/enum-param";
 
 export async function GET(req: NextRequest) {
   try {
@@ -25,22 +26,30 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(Math.max(1, limitParam || 50), 200);
     const offset = Math.max(0, offsetParam || 0);
 
+    // Filter values are validated against the enum rather than cast. An
+    // unrecognised value reaching a SQL enum comparison makes Postgres throw,
+    // which would surface to the caller as a 500 instead of a 400.
+    const role = parseEnumParam(roleParam, userRoleEnum.enumValues);
+    if (role === INVALID) {
+      return NextResponse.json({ error: "Unknown role" }, { status: 400 });
+    }
+
+    const status = parseEnumParam(statusParam, userStatusEnum.enumValues);
+    if (status === INVALID) {
+      return NextResponse.json({ error: "Unknown status" }, { status: 400 });
+    }
+
     // Build where conditions - combine all with AND
-    const conditions: any[] = [];
+    const conditions: SQL[] = [];
     if (search) {
-      conditions.push(
-        or(
-          ilike(users.email, `%${search}%`),
-          ilike(users.fullName, `%${search}%`)
-        )
+      const match = or(
+        ilike(users.email, `%${search}%`),
+        ilike(users.fullName, `%${search}%`)
       );
+      if (match) conditions.push(match);
     }
-    if (roleParam) {
-      conditions.push(eq(users.role, roleParam as any));
-    }
-    if (statusParam) {
-      conditions.push(eq(users.status, statusParam as any));
-    }
+    if (role) conditions.push(eq(users.role, role));
+    if (status) conditions.push(eq(users.status, status));
 
     // Combine all conditions with AND
     const whereConditions =

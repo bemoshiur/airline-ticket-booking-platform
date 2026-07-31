@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, agencyCommissions, organizations } from "@/lib/db";
+import { db, agencyCommissions, commissionStatusEnum } from "@/lib/db";
 import { auth } from "@/auth";
 import { eq, and } from "drizzle-orm";
+import { INVALID, parseEnumParam } from "@/lib/db/enum-param";
 
 export async function GET(req: NextRequest) {
   try {
@@ -15,8 +16,16 @@ export async function GET(req: NextRequest) {
     }
 
     const searchParams = req.nextUrl.searchParams;
-    const status = searchParams.get("status") || "pending";
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const status = parseEnumParam(
+      searchParams.get("status"),
+      commissionStatusEnum.enumValues
+    );
+    if (status === INVALID) {
+      return NextResponse.json({ error: "Unknown status" }, { status: 400 });
+    }
+
+    const limitParam = parseInt(searchParams.get("limit") || "50");
+    const limit = Math.min(Math.max(1, limitParam || 50), 200);
 
     // Get pending commissions by agency
     const pendingSettlements = await db
@@ -28,7 +37,8 @@ export async function GET(req: NextRequest) {
         count: agencyCommissions.id,
       })
       .from(agencyCommissions)
-      .where(eq(agencyCommissions.status, status as any))
+      // Defaults to pending — the queue an operator actually needs to work.
+      .where(eq(agencyCommissions.status, status ?? "pending"))
       .limit(limit);
 
     return NextResponse.json({

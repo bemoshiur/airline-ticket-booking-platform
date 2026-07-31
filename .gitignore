@@ -40,3 +40,18 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# test output
+/coverage
+/test-results
+
+# editor
+.idea/
+*.swp
+.vscode/*
+!.vscode/extensions.json
+
+# local scratch — keep experiments out of the history
+/tmp
+/scratch
+*.local.*
