@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, bookings, payments } from "@/lib/db";
+import { db, bookings, payments, flights } from "@/lib/db";
 import { auth } from "@/auth";
-import { nanoid } from "nanoid";
+import { customAlphabet } from "nanoid";
+import { eq } from "drizzle-orm";
 
-function generateBookingRef(): string {
-  // Generate format: ABC123 (6 alphanumeric chars)
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let result = "";
-  for (let i = 0; i < 6; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
+const generateBookingRef = customAlphabet(
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+  12
+);
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,13 +24,12 @@ export async function POST(req: NextRequest) {
       flightId,
       passengers,
       cabinClass,
-      totalPrice,
-      discount,
+      promoCode,
       ancillaries,
       paymentMethod,
     } = await req.json();
 
-    if (!flightId || !passengers || !cabinClass || !totalPrice) {
+    if (!flightId || !passengers || !cabinClass) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -48,8 +43,42 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Look up flight from database to get authoritative pricing
+    const flight = await db
+      .select()
+      .from(flights)
+      .where(eq(flights.id, flightId))
+      .limit(1);
+
+    if (!flight[0]) {
+      return NextResponse.json(
+        { error: "Flight not found" },
+        { status: 404 }
+      );
+    }
+
+    // Calculate price server-side from flight base price
+    let cabinPrice = flight[0].basePrice;
+    if (cabinClass === "business") {
+      cabinPrice = Math.floor(flight[0].basePrice * 1.5);
+    } else if (cabinClass === "first") {
+      cabinPrice = Math.floor(flight[0].basePrice * 2.5);
+    } else if (cabinClass === "premium_economy") {
+      cabinPrice = Math.floor(flight[0].basePrice * 1.25);
+    }
+
+    const totalPrice = cabinPrice * passengers.length;
+
+    // Server-side discount validation (placeholder - expand with promo code logic)
+    let discount = 0;
+    if (promoCode) {
+      // TODO: Validate promoCode from database, calculate discount
+      // For now, no discount
+    }
+
+    const finalPrice = totalPrice - discount;
+
     const bookingRef = generateBookingRef();
-    const finalPrice = totalPrice - (discount || 0);
 
     // Create booking
     const booking = await db

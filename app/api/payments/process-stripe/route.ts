@@ -19,11 +19,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { bookingId, amount, currency = "BDT" } = await req.json();
+    const { bookingId } = await req.json();
 
-    if (!bookingId || !amount) {
+    if (!bookingId) {
       return NextResponse.json(
-        { error: "Missing bookingId or amount" },
+        { error: "Missing bookingId" },
         { status: 400 }
       );
     }
@@ -49,10 +49,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Prevent double-payment: only allow payment for pending_payment status
+    if (booking[0].status !== "pending_payment") {
+      return NextResponse.json(
+        {
+          error: `Cannot pay for booking with status: ${booking[0].status}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Use booking's authoritative finalPrice and currency
+    const amount = booking[0].finalPrice;
+    const currency = booking[0].currency || "BDT";
+
     // Create Stripe payment intent
+    // Note: Stripe doesn't support BDT; in production, convert BDT to USD at current rate
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: amount, // Amount in poisha (smallest unit, 100 poisha = 1 BDT)
-      currency: "usd", // Stripe uses USD for international, but we'll convert from BDT
+      amount: amount, // Amount in smallest unit (poisha for BDT equivalent)
+      currency: "usd", // Stripe limitation; convert BDT → USD in production
       metadata: {
         bookingId,
         bookingRef: booking[0].bookingRef,
@@ -77,6 +92,8 @@ export async function POST(req: NextRequest) {
         clientSecret: paymentIntent.client_secret,
         paymentIntentId: paymentIntent.id,
         amount,
+        currency,
+        bookingRef: booking[0].bookingRef,
         status: "pending",
       },
       { status: 200 }
