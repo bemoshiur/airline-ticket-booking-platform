@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, bookings, payments, flights } from "@/lib/db";
+import { db, bookings, payments, flights, ancillaryProducts } from "@/lib/db";
 import { auth } from "@/auth";
 import { customAlphabet } from "nanoid";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { priceOffer, toClientError, CABIN_MULTIPLIER } from "@/lib/iata";
+import {
+  AncillaryError,
+  MAX_SELECTIONS,
+  priceAncillaries,
+} from "@/lib/ancillaries/pricing";
 
 // Excludes look-alike characters so refs survive being read over the phone.
 const generateBookingRef = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 10);
@@ -33,7 +38,20 @@ const bodySchema = z
      */
     acceptedTotal: z.coerce.number().int().nonnegative().optional(),
     promoCode: z.string().trim().max(40).optional(),
-    ancillaries: z.array(z.unknown()).max(20).optional(),
+    /**
+     * Product codes and quantities only. Prices come from the catalog — an
+     * earlier version accepted arbitrary objects here and charged nothing
+     * for them.
+     */
+    ancillaries: z
+      .array(
+        z.object({
+          code: z.string().trim().min(1).max(40),
+          quantity: z.coerce.number().int().min(1).max(9),
+        })
+      )
+      .max(MAX_SELECTIONS)
+      .optional(),
     paymentMethod: z
       .enum(["stripe", "bkash", "nagad", "rocket", "bank_transfer"])
       .optional(),
@@ -85,9 +103,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(quote.error, { status: quote.status });
     }
 
+    // Extras are priced from the catalog, never from the request.
+    const extras = await priceSelectedAncillaries(
+      body.ancillaries ?? [],
+      quote,
+      body.passengers
+    );
+
     // Promo codes are validated server-side only; no client-supplied discount.
     const discount = 0;
-    const finalPrice = quote.total - discount;
+    const totalPrice = quote.total + extras.total;
+    const finalPrice = totalPrice - discount;
 
     const booking = await db
       .insert(bookings)
@@ -101,11 +127,12 @@ export async function POST(req: NextRequest) {
         status: "pending_payment",
         passengers: body.passengers,
         cabinClass: quote.cabinClass,
-        totalPrice: quote.total,
+        totalPrice,
         discount,
         finalPrice,
         currency: quote.currency,
-        ancillaries: body.ancillaries ?? [],
+        ancillaries: extras.items,
+        ancillariesTotal: extras.total,
         paymentMethod: body.paymentMethod,
       })
       .returning();
@@ -132,6 +159,9 @@ export async function POST(req: NextRequest) {
         bookingId: booking[0].id,
         bookingRef: booking[0].bookingRef,
         status: booking[0].status,
+        farePrice: quote.total,
+        ancillaries: extras.items,
+        ancillariesTotal: extras.total,
         totalPrice: finalPrice,
         currency: quote.currency,
         passengers: body.passengers.length,
@@ -139,6 +169,12 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
+    if (error instanceof AncillaryError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: 400 }
+      );
+    }
     console.error("Booking creation error:", error);
     const { status, body: errorBody } = toClientError(error);
     return NextResponse.json(errorBody, { status });
@@ -203,6 +239,81 @@ async function quoteFromOffer(
     flightId: offer.source === "database" ? localFlightId(offer.id) : null,
     itinerary: offer.itineraries,
   };
+}
+
+/**
+ * Price the selected extras against the live catalog.
+ *
+ * Context is derived from the itinerary we just quoted, not from the request:
+ * segment count drives per-segment products, and whether the route is
+ * international decides eligibility.
+ */
+async function priceSelectedAncillaries(
+  selections: { code: string; quantity: number }[],
+  quote: Quote,
+  passengers: { type: "adult" | "child" | "infant" }[]
+) {
+  if (selections.length === 0) {
+    return { items: [], total: 0, currency: quote.currency };
+  }
+
+  const catalog = await db
+    .select()
+    .from(ancillaryProducts)
+    .where(eq(ancillaryProducts.active, true));
+
+  return priceAncillaries(selections, catalog, {
+    // Infants have no seat and no baggage allowance of their own.
+    passengerCount: passengers.filter((p) => p.type !== "infant").length,
+    segmentCount: countSegments(quote.itinerary),
+    cabinClass: quote.cabinClass,
+    isInternational: isInternational(quote.itinerary),
+    currency: quote.currency,
+  });
+}
+
+interface ItinerarySegment {
+  origin?: unknown;
+  destination?: unknown;
+}
+
+function countSegments(itinerary: unknown): number {
+  if (!Array.isArray(itinerary)) return 1;
+  const total = itinerary.reduce((sum: number, leg: unknown) => {
+    const segments = (leg as { segments?: unknown[] })?.segments;
+    return sum + (Array.isArray(segments) ? segments.length : 0);
+  }, 0);
+  return Math.max(total, 1);
+}
+
+/** Bangladesh domestic airports; anything touching another code is international. */
+const BD_AIRPORTS = new Set([
+  "DAC",
+  "CGP",
+  "ZYL",
+  "CXB",
+  "JSR",
+  "RJH",
+  "SPD",
+  "BZL",
+]);
+
+function isInternational(itinerary: unknown): boolean {
+  if (!Array.isArray(itinerary)) return true;
+
+  const codes: string[] = [];
+  for (const leg of itinerary) {
+    const segments = (leg as { segments?: ItinerarySegment[] })?.segments ?? [];
+    for (const segment of segments) {
+      if (typeof segment.origin === "string") codes.push(segment.origin);
+      if (typeof segment.destination === "string") codes.push(segment.destination);
+    }
+  }
+
+  // Default to international when we cannot tell — the stricter of the two,
+  // since domestic-only products stay available either way.
+  if (codes.length === 0) return true;
+  return codes.some((code) => !BD_AIRPORTS.has(code.toUpperCase()));
 }
 
 /** Legacy path — price a local schedule row directly. */

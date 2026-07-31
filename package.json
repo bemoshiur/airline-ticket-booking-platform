@@ -13,7 +13,8 @@
     "test:coverage": "vitest run --coverage",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/push-migrations.js",
-    "db:seed": "tsx scripts/seed.ts"
+    "db:seed": "tsx scripts/seed.ts && tsx scripts/seed-ancillaries.ts",
+    "db:seed:ancillaries": "tsx scripts/seed-ancillaries.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

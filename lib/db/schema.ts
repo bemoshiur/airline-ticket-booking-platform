@@ -239,7 +239,10 @@ export const bookings = pgTable(
     discount: integer("discount").default(0),
     finalPrice: integer("final_price").notNull(),
     currency: varchar("currency", { length: 3 }).notNull().default("BDT"),
+    /** Priced line items, snapshotted at booking time. See lib/ancillaries. */
     ancillaries: jsonb("ancillaries"),
+    /** Extras subtotal, kept separate from the fare for refunds and reporting. */
+    ancillariesTotal: integer("ancillaries_total").notNull().default(0),
     paymentId: uuid("payment_id"),
     paymentMethod: paymentMethodEnum("payment_method"),
     cancellationReason: text("cancellation_reason"),
@@ -392,6 +395,69 @@ export const adminSettings = pgTable("admin_settings", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const ancillaryCategoryEnum = pgEnum("ancillary_category", [
+  "baggage",
+  "seat",
+  "meal",
+  "insurance",
+  "lounge",
+  "priority",
+  "other",
+]);
+
+/** How a product's price scales with the itinerary. */
+export const ancillaryUnitEnum = pgEnum("ancillary_unit", [
+  /** Charged once per passenger covered. */
+  "per_passenger",
+  /** Charged once for the whole booking, whatever its size. */
+  "per_booking",
+  /** Charged per passenger per flown segment — seat selection, for instance. */
+  "per_segment",
+]);
+
+/**
+ * Catalog of extras sold alongside a fare.
+ *
+ * Prices live here rather than in code so they can be changed without a deploy,
+ * and so a booking is always priced against what the catalog said at the time.
+ */
+export const ancillaryProducts = pgTable(
+  "ancillary_products",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Stable identifier the client sends; never the uuid. */
+    code: varchar("code", { length: 40 }).notNull().unique(),
+    name: varchar("name", { length: 120 }).notNull(),
+    nameBn: varchar("name_bn", { length: 120 }),
+    description: text("description"),
+    category: ancillaryCategoryEnum("category").notNull(),
+    unit: ancillaryUnitEnum("unit").notNull(),
+    price: integer("price").notNull(),
+    currency: varchar("currency", { length: 3 }).notNull().default("BDT"),
+    /** Per-unit ceiling, so a typo cannot buy 10,000 extra bags. */
+    maxQuantity: integer("max_quantity").notNull().default(1),
+    /**
+     * Comma-separated cabin classes this is sold in. Null means every cabin.
+     * Business fares already include lounge access, for example.
+     */
+    cabinClasses: varchar("cabin_classes", { length: 120 }),
+    /** International-only products (visa support) are hidden on domestic routes. */
+    internationalOnly: boolean("international_only").notNull().default(false),
+    active: boolean("active").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    codeIdx: uniqueIndex("ancillary_products_code_idx").on(table.code),
+    activeIdx: index("ancillary_products_active_idx").on(table.active),
+  })
+);
+
 export const priceAlertStatusEnum = pgEnum("price_alert_status", [
   "active",
   "paused",
@@ -506,3 +572,6 @@ export type InsertAdminSetting = typeof adminSettings.$inferInsert;
 
 export type PriceAlert = typeof priceAlerts.$inferSelect;
 export type InsertPriceAlert = typeof priceAlerts.$inferInsert;
+
+export type AncillaryProduct = typeof ancillaryProducts.$inferSelect;
+export type InsertAncillaryProduct = typeof ancillaryProducts.$inferInsert;
