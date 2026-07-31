@@ -1,34 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, bookings, payments } from "@/lib/db";
 import { auth } from "@/auth";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import Stripe from "stripe";
+import { convert, toMinorUnits } from "@/lib/fx";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-04-10",
-});
+// No apiVersion override: pinning a string the installed SDK does not know
+// breaks the build on every upgrade. The SDK defaults to its own version.
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+/** Stripe cannot settle BDT, so cards are charged in this currency. */
+const SETTLEMENT_CURRENCY = "USD";
+/** Stripe's floor for a card charge, in settlement-currency minor units. */
+const MIN_CHARGE_MINOR_UNITS = 50;
 
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
 
     if (!session?.user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { bookingId } = await req.json();
 
-    if (!bookingId) {
-      return NextResponse.json(
-        { error: "Missing bookingId" },
-        { status: 400 }
-      );
+    if (!bookingId || typeof bookingId !== "string") {
+      return NextResponse.json({ error: "Missing bookingId" }, { status: 400 });
     }
 
-    // Get booking
     const booking = await db
       .select()
       .from(bookings)
@@ -36,88 +35,114 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (!booking[0]) {
-      return NextResponse.json(
-        { error: "Booking not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
     if (booking[0].userId !== session.user.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 403 }
-      );
+      // 404, not 403 — a 403 confirms the booking id exists.
+      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
-    // Prevent double-payment: only allow payment for pending_payment status
+    // Prevent double-payment: only a booking awaiting payment can be charged.
     if (booking[0].status !== "pending_payment") {
       return NextResponse.json(
-        {
-          error: `Cannot pay for booking with status: ${booking[0].status}`,
-        },
+        { error: `Cannot pay for booking with status: ${booking[0].status}` },
         { status: 400 }
       );
     }
 
-    // Use booking's authoritative finalPrice and currency
     const amountBDT = booking[0].finalPrice;
-    const currency = booking[0].currency || "BDT";
 
-    // For MVP: Use a fixed exchange rate (1 BDT ≈ 0.0095 USD)
-    // In production: Fetch real-time rate from currency API
-    const BDT_TO_USD_RATE = 0.0095;
-    const amountUSD = Math.round(amountBDT * BDT_TO_USD_RATE * 100); // Convert to USD cents for Stripe
+    // Idempotency: a retried checkout must reuse the existing intent rather
+    // than stack up authorizations against the same booking.
+    const existing = await db
+      .select()
+      .from(payments)
+      .where(
+        and(
+          eq(payments.bookingId, bookingId),
+          eq(payments.status, "processing")
+        )
+      )
+      .limit(1);
 
-    // Safeguard: minimum charge (e.g., $0.50)
-    if (amountUSD < 50) {
+    if (existing[0]?.stripePaymentIntentId) {
+      const intent = await stripe.paymentIntents.retrieve(
+        existing[0].stripePaymentIntentId
+      );
+      if (intent.status !== "canceled") {
+        return NextResponse.json({
+          clientSecret: intent.client_secret,
+          paymentIntentId: intent.id,
+          amount: amountBDT,
+          currency: "BDT",
+          bookingRef: booking[0].bookingRef,
+          status: "pending",
+          reused: true,
+        });
+      }
+    }
+
+    const settlement = convert(amountBDT, "BDT", SETTLEMENT_CURRENCY);
+    const chargeMinorUnits = toMinorUnits(
+      settlement.amount,
+      SETTLEMENT_CURRENCY
+    );
+
+    if (chargeMinorUnits < MIN_CHARGE_MINOR_UNITS) {
       return NextResponse.json(
-        { error: "Booking amount too low for card processing (min ~500 BDT)" },
+        { error: "Booking amount is below the card processing minimum" },
         { status: 400 }
       );
     }
 
-    // Create Stripe payment intent in USD (Stripe doesn't support BDT)
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amountUSD, // Amount in USD cents (smallest Stripe unit)
-      currency: "usd",
-      metadata: {
-        bookingId,
-        bookingRef: booking[0].bookingRef,
-        amountBDT,
+    const paymentIntent = await stripe.paymentIntents.create(
+      {
+        amount: chargeMinorUnits,
+        currency: SETTLEMENT_CURRENCY.toLowerCase(),
+        metadata: {
+          bookingId,
+          bookingRef: booking[0].bookingRef,
+          amountBDT: String(amountBDT),
+          fxRate: String(settlement.rate),
+        },
       },
-    });
+      // Stripe-side guard against duplicate intents from a double-submit.
+      { idempotencyKey: `booking:${bookingId}:${amountBDT}` }
+    );
 
-    // Store payment record with BOTH original and converted amounts
-    // Do NOT store sensitive fields like client_secret
-    const safeProcessorData = {
-      id: paymentIntent.id,
-      status: paymentIntent.status,
-      amountUSD,
-      amountBDT,
-      fxRate: BDT_TO_USD_RATE,
-    };
-
+    // Persist only non-sensitive fields — never the client_secret — plus the
+    // FX rate, so the charge can be reconciled against the BDT ledger later.
     await db.insert(payments).values({
       bookingId,
-      amount: amountBDT, // Store in booking currency
+      amount: amountBDT,
       currency: "BDT",
       status: "processing",
       paymentMethod: "stripe",
       stripePaymentIntentId: paymentIntent.id,
-      processorResponse: safeProcessorData, // Only safe, non-sensitive fields
+      processorResponse: {
+        id: paymentIntent.id,
+        status: paymentIntent.status,
+        settlementCurrency: SETTLEMENT_CURRENCY,
+        settlementAmount: settlement.amount,
+        amountBDT,
+        fxRate: settlement.rate,
+      },
     });
 
-    return NextResponse.json(
-      {
-        clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id,
-        amount,
-        currency,
-        bookingRef: booking[0].bookingRef,
-        status: "pending",
+    return NextResponse.json({
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
+      amount: amountBDT,
+      currency: "BDT",
+      settlement: {
+        currency: SETTLEMENT_CURRENCY,
+        amount: settlement.amount,
+        rate: settlement.rate,
       },
-      { status: 200 }
-    );
+      bookingRef: booking[0].bookingRef,
+      status: "pending",
+    });
   } catch (error) {
     console.error("Stripe payment error:", error);
     return NextResponse.json(

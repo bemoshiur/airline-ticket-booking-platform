@@ -31,14 +31,12 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(Math.max(1, limitParam || 50), 100);
     const offset = Math.max(0, offsetParam || 0);
 
-    // Build query
-    let whereConditions = eq(bookings.orgId, session.user.orgId);
+    // Always scoped to the caller's own org; status is an optional narrowing.
+    const conditions = [eq(bookings.orgId, session.user.orgId)];
     if (status) {
-      whereConditions = and(
-        whereConditions,
-        eq(bookings.status, status as any)
-      );
+      conditions.push(eq(bookings.status, status as any));
     }
+    const whereConditions = and(...conditions);
 
     const agencyBookings = await db
       .select({
@@ -50,10 +48,8 @@ export async function GET(req: NextRequest) {
         createdAt: bookings.createdAt,
         flight: {
           flightNumber: flights.flightNumber,
-          airline: {
-            name: airlines.name,
-            iataCode: airlines.iataCode,
-          },
+          airlineName: airlines.name,
+          airlineCode: airlines.iataCode,
         },
       })
       .from(bookings)

@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, bookings, payments } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-04-10",
-});
+// No apiVersion override — see app/api/payments/process-stripe/route.ts.
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
@@ -46,14 +45,29 @@ export async function POST(req: NextRequest) {
           })
           .where(eq(payments.stripePaymentIntentId, paymentIntent.id));
 
-        // Update booking status to confirmed
-        await db
+        // Only a booking still awaiting payment may be confirmed. Stripe
+        // redelivers events, and a cancelled booking must not be revived by a
+        // late webhook.
+        const confirmed = await db
           .update(bookings)
           .set({
             status: "confirmed",
             updatedAt: new Date(),
           })
-          .where(eq(bookings.id, bookingId));
+          .where(
+            and(
+              eq(bookings.id, bookingId),
+              eq(bookings.status, "pending_payment")
+            )
+          )
+          .returning({ id: bookings.id });
+
+        if (confirmed.length === 0) {
+          console.warn(
+            `Booking ${bookingId} was not pending_payment; confirmation skipped`
+          );
+          break;
+        }
 
         console.log(`✓ Booking ${bookingId} confirmed via Stripe webhook`);
         break;

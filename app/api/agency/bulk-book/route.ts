@@ -77,9 +77,10 @@ export async function POST(req: NextRequest) {
       cabinPrice = Math.floor(flight[0].basePrice * 1.25);
     }
 
-    // Apply agency's configured markup (from organization, not client input)
-    const agencyMarkup = agency[0].commissionRate || 0;
-    if (agencyMarkup < 0 || agencyMarkup > 100) {
+    // Apply agency's configured markup (from organization, not client input).
+    // commissionRate is a numeric column, so Postgres hands it back as a string.
+    const agencyMarkup = Number(agency[0].commissionRate ?? 0);
+    if (!Number.isFinite(agencyMarkup) || agencyMarkup < 0 || agencyMarkup > 100) {
       return NextResponse.json(
         { error: "Invalid agency configuration" },
         { status: 400 }

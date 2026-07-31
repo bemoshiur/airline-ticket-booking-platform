@@ -180,8 +180,10 @@ export const flights = pgTable(
     flightNumber: varchar("flight_number", { length: 10 }).notNull(),
     departureAirportId: uuid("departure_airport_id").notNull(),
     arrivalAirportId: uuid("arrival_airport_id").notNull(),
-    departureTime: timestamp("departure_time").notNull(),
-    arrivalTime: timestamp("arrival_time").notNull(),
+    // Timezone-aware: a naive timestamp round-trips through the server's local
+    // zone and silently shifts published departure times by hours.
+    departureTime: timestamp("departure_time", { withTimezone: true }).notNull(),
+    arrivalTime: timestamp("arrival_time", { withTimezone: true }).notNull(),
     durationMinutes: integer("duration_minutes").notNull(),
     aircraftType: varchar("aircraft_type", { length: 50 }),
     stops: integer("stops").default(0),
@@ -219,13 +221,23 @@ export const bookings = pgTable(
     bookingRef: varchar("booking_ref", { length: 10 }).notNull().unique(),
     userId: uuid("user_id").notNull(),
     orgId: uuid("org_id"),
-    flightId: uuid("flight_id").notNull(),
+    // Null for GDS-sourced bookings — those flights have no local schedule row.
+    flightId: uuid("flight_id"),
+    /** Distribution channel that issued the fare: `database`, `amadeus`, ... */
+    offerSource: varchar("offer_source", { length: 32 })
+      .notNull()
+      .default("database"),
+    /** Provider-scoped offer id the booking was priced from. */
+    offerId: varchar("offer_id", { length: 200 }),
+    /** Normalized itinerary snapshot, so the booking survives inventory churn. */
+    itinerary: jsonb("itinerary"),
     status: bookingStatusEnum("status").notNull().default("pending_payment"),
     passengers: jsonb("passengers").notNull(),
     cabinClass: cabinClassEnum("cabin_class").notNull(),
     totalPrice: integer("total_price").notNull(),
     discount: integer("discount").default(0),
     finalPrice: integer("final_price").notNull(),
+    currency: varchar("currency", { length: 3 }).notNull().default("BDT"),
     ancillaries: jsonb("ancillaries"),
     paymentId: uuid("payment_id"),
     paymentMethod: paymentMethodEnum("payment_method"),
@@ -238,6 +250,7 @@ export const bookings = pgTable(
     bookingRefIdx: uniqueIndex("bookings_booking_ref_idx").on(table.bookingRef),
     userIdIdx: index("bookings_user_id_idx").on(table.userId),
     flightIdIdx: index("bookings_flight_id_idx").on(table.flightId),
+    offerIdIdx: index("bookings_offer_id_idx").on(table.offerId),
     statusIdx: index("bookings_status_idx").on(table.status),
     createdAtIdx: index("bookings_created_at_idx").on(table.createdAt),
   })

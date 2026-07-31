@@ -8,6 +8,20 @@
       "when": 1785529205886,
       "tag": "0000_first_mole_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785531459046,
+      "tag": "0001_complex_black_crow",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785531707223,
+      "tag": "0002_majestic_mongu",
+      "breakpoints": true
     }
   ]
 }

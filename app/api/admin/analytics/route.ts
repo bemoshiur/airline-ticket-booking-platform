@@ -49,17 +49,19 @@ export async function GET(req: NextRequest) {
       .from(bookings)
       .groupBy(bookings.status);
 
+    // Postgres returns SUM() as a string to preserve precision.
+    const revenue = Number(totalRevenue[0].total ?? 0);
+    const bookingCount = totalBookings[0].count;
+
     return NextResponse.json({
       metrics: {
-        totalRevenue: totalRevenue[0].total || 0,
-        totalBookings: totalBookings[0].count || 0,
+        totalRevenue: revenue,
+        totalBookings: bookingCount,
         totalUsers: totalUsers[0].count || 0,
         completedPayments: completedPayments[0].count || 0,
         conversionRate: `${conversionRate}%`,
         averageOrderValue:
-          totalBookings[0].count > 0
-            ? Math.floor((totalRevenue[0].total || 0) / totalBookings[0].count)
-            : 0,
+          bookingCount > 0 ? Math.floor(revenue / bookingCount) : 0,
       },
       bookingsByStatus,
       timestamp: new Date(),

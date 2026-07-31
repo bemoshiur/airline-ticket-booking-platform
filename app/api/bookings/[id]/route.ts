@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, bookings, flights, airlines, airports } from "@/lib/db";
 import { auth } from "@/auth";
 import { eq } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+
+// The airports table is joined twice — once per end of the route — so each
+// side needs its own alias.
+const departureAirport = alias(airports, "departure_airport");
+const arrivalAirport = alias(airports, "arrival_airport");
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -13,6 +19,8 @@ export async function GET(
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const { id } = await params;
 
     const booking = await db
       .select({
@@ -37,21 +45,26 @@ export async function GET(
           arrivalTime: flights.arrivalTime,
           durationMinutes: flights.durationMinutes,
           stops: flights.stops,
-          airline: {
-            name: airlines.name,
-            iataCode: airlines.iataCode,
-          },
-          departure: {
-            city: airports.city,
-            code: airports.iataCode,
-          },
+          airlineName: airlines.name,
+          airlineCode: airlines.iataCode,
+          departureCity: departureAirport.city,
+          departureCode: departureAirport.iataCode,
+          arrivalCity: arrivalAirport.city,
+          arrivalCode: arrivalAirport.iataCode,
         },
       })
       .from(bookings)
       .innerJoin(flights, eq(bookings.flightId, flights.id))
       .innerJoin(airlines, eq(flights.airlineId, airlines.id))
-      .innerJoin(airports, eq(flights.departureAirportId, airports.id))
-      .where(eq(bookings.id, params.id))
+      .innerJoin(
+        departureAirport,
+        eq(flights.departureAirportId, departureAirport.id)
+      )
+      .innerJoin(
+        arrivalAirport,
+        eq(flights.arrivalAirportId, arrivalAirport.id)
+      )
+      .where(eq(bookings.id, id))
       .limit(1);
 
     if (!booking[0]) {
