@@ -14,13 +14,25 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Fail closed: agency must have orgId
+    if (!session.user.orgId) {
+      return NextResponse.json(
+        { error: "Agency not properly configured" },
+        { status: 403 }
+      );
+    }
+
     const searchParams = req.nextUrl.searchParams;
     const status = searchParams.get("status");
-    const limit = parseInt(searchParams.get("limit") || "50");
-    const offset = parseInt(searchParams.get("offset") || "0");
+    const limitParam = parseInt(searchParams.get("limit") || "50");
+    const offsetParam = parseInt(searchParams.get("offset") || "0");
+
+    // Clamp pagination: limit 1-100, offset >= 0
+    const limit = Math.min(Math.max(1, limitParam || 50), 100);
+    const offset = Math.max(0, offsetParam || 0);
 
     // Build query
-    let whereConditions = eq(bookings.orgId, session.user.orgId || "");
+    let whereConditions = eq(bookings.orgId, session.user.orgId);
     if (status) {
       whereConditions = and(
         whereConditions,

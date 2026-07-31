@@ -20,14 +20,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { flightId, passengerBatches, cabinClass, orgMarkup = 0 } =
-      await req.json();
+    const { flightId, passengerBatches, cabinClass } = await req.json();
 
     if (!flightId || !passengerBatches || !Array.isArray(passengerBatches)) {
       return NextResponse.json(
         {
           error: "Invalid request: flightId and passengerBatches array required",
         },
+        { status: 400 }
+      );
+    }
+
+    // Validate passenger batch count
+    if (passengerBatches.length > 50) {
+      return NextResponse.json(
+        { error: "Maximum 50 passenger batches allowed" },
         { status: 400 }
       );
     }
@@ -70,12 +77,43 @@ export async function POST(req: NextRequest) {
       cabinPrice = Math.floor(flight[0].basePrice * 1.25);
     }
 
-    // Apply agency markup
-    const priceWithMarkup = Math.floor(cabinPrice * (1 + orgMarkup / 100));
+    // Apply agency's configured markup (from organization, not client input)
+    const agencyMarkup = agency[0].commissionRate || 0;
+    if (agencyMarkup < 0 || agencyMarkup > 100) {
+      return NextResponse.json(
+        { error: "Invalid agency configuration" },
+        { status: 400 }
+      );
+    }
+    const priceWithMarkup = Math.floor(cabinPrice * (1 + agencyMarkup / 100));
 
     // Create bookings in transaction
     const createdBookings = [];
+    let totalSeatsNeeded = 0;
 
+    // First pass: validate all batches and count seats
+    for (const passengers of passengerBatches) {
+      if (!Array.isArray(passengers) || passengers.length === 0) {
+        continue;
+      }
+      if (passengers.length > 500) {
+        return NextResponse.json(
+          { error: "Maximum 500 passengers per batch" },
+          { status: 400 }
+        );
+      }
+      totalSeatsNeeded += passengers.length;
+    }
+
+    // Check seat availability
+    if (totalSeatsNeeded > (flight[0].seatsAvailable || 0)) {
+      return NextResponse.json(
+        { error: `Not enough seats available (need ${totalSeatsNeeded}, have ${flight[0].seatsAvailable})` },
+        { status: 400 }
+      );
+    }
+
+    // Second pass: create bookings
     for (const passengers of passengerBatches) {
       if (!Array.isArray(passengers) || passengers.length === 0) {
         continue;

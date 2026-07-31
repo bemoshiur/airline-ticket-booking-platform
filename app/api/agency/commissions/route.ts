@@ -14,6 +14,14 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Fail closed: agency must have orgId
+    if (!session.user.orgId) {
+      return NextResponse.json(
+        { error: "Agency not properly configured" },
+        { status: 403 }
+      );
+    }
+
     // Calculate commissions for this agency
     const commissions = await db
       .select({
@@ -24,7 +32,7 @@ export async function GET(req: NextRequest) {
         createdAt: agencyCommissions.createdAt,
       })
       .from(agencyCommissions)
-      .where(eq(agencyCommissions.orgId, session.user.orgId || ""))
+      .where(eq(agencyCommissions.orgId, session.user.orgId))
       .orderBy((col) => sql`${col.createdAt} DESC`);
 
     // Calculate totals
