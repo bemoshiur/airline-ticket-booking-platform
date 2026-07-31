@@ -39,6 +39,15 @@ Treat unverified status claims in any doc as unverified.
 | Booking creation | Booked 2 passengers from an offer, read it back as owner, `401` anonymously |
 | RBAC | `/api/admin/analytics` returned `403` for an `enduser` session |
 | Rate limiting | 30 searches passed, the rest returned `429` |
+| Fare calendar | Bucketed to the correct Dhaka date, cheapest carrier picked, 62-day cap and unknown-airport error both enforced |
+| Price alerts | Created, duplicate and past-date rejected, cron auth on both verbs, full sweep run — including the undelivered-notification guard against a rejecting SendGrid key |
+| Ancillary pricing | 2-pax booking with mixed pricing units charged 14,050 on a 170,000 fare; a client-supplied `price` field was ignored; all six rejection paths returned 400 |
+| Seat inventory under concurrency | 10 simultaneous bookings against 5 seats produced exactly 5×`201` and 5×`409`, inventory landing at zero |
+| Seat release | 3 of 5 unpaid bookings aged past the payment window; sweep released exactly 3 seats and a second run released none |
+
+Plus **182 automated tests** (`npm test`) over FX, timezone bounds, caching,
+rate limits, query validation, provider fallback, alert rules, and ancillary
+pricing.
 
 Not yet exercised: Stripe payment and webhook (needs live test keys), agency
 bulk booking, partner dashboard, admin settlements. These compile and are
@@ -62,10 +71,21 @@ type-checked, but have not been run.
 POST /api/flights/search          Search offers (30/min)
 GET  /api/flights/:id             Local schedule detail
 POST /api/flights/price           Authoritative re-quote (20/min)
+POST /api/flights/fare-calendar   Cheapest fare per date, 62-day window (20/min)
+GET  /api/ancillaries             Extras available for an itinerary
 POST /api/bookings/create         Book from an offer, repriced server-side
 GET  /api/bookings/:id            Booking detail (owner / agency / admin only)
 POST /api/payments/process-stripe Payment intent, idempotent per booking+amount
 POST /api/webhooks/stripe         Signed payment callbacks
+```
+
+**Price alerts**
+```
+POST   /api/alerts                Watch a route (20 active per user)
+GET    /api/alerts                List your own
+PATCH  /api/alerts/:id            Pause, resume, retarget
+DELETE /api/alerts/:id            Stop watching
+GET    /api/cron/price-alerts     Sweep — cron only, CRON_SECRET required
 ```
 
 **Auth**
@@ -87,7 +107,9 @@ Enforced and, where marked ✓, exercised:
 - ✓ RBAC actually reaches the handlers (session carries `role`/`orgId`)
 - ✓ IDOR returns `404`, never `403`, so ids cannot be enumerated
 - ✓ Privilege escalation blocked at registration
-- ✓ Rate limits on search, pricing, and signup
+- ✓ Rate limits on search, pricing, calendar, and signup
+- ✓ Ancillaries priced from the catalog; a client-supplied `price` is ignored
+- ✓ Cron sweep refuses to run without `CRON_SECRET`; wrong secret gets 404, compared in constant time
 - Suspended accounts cannot obtain a session
 - Tenant isolation fails closed — a missing `orgId` is `403`, never `""`
 - Stripe webhook signatures verified; confirmation guarded on `pending_payment`
@@ -101,8 +123,9 @@ Enforced and, where marked ✓, exercised:
 npm install
 cp .env.example .env.local     # fill in DATABASE_URL, NEXTAUTH_SECRET, Stripe keys
 npm run db:migrate             # apply drizzle/ migrations
-npm run db:seed                # 14 airlines, 13 airports, 4 sample flights
+npm run db:seed                # airlines, airports, sample flights, ancillary catalog
 npm run dev
+npm test                       # 182 tests
 ```
 
 Check before deploying:
@@ -111,24 +134,31 @@ Check before deploying:
 - [ ] Real Stripe keys, and the webhook pointed at `/api/webhooks/stripe`
       (`payment_intent.succeeded`, `payment_intent.payment_failed`, `charge.refunded`)
 - [ ] `FX_RATES_JSON` reviewed — `lib/fx.ts` defaults are static and will drift
-- [ ] `npm run build` clean
+- [ ] `CRON_SECRET` set, or the price-alert sweep will refuse to run
+- [ ] SendGrid configured, or price alerts will never reach anyone
+- [ ] `npm run build` and `npm test` clean
 - [ ] A superadmin provisioned directly in the database (registration cannot create one)
 
 ## Known gaps
 
 1. **Payments unexercised** — Stripe flow needs a live test-key run.
 2. **Static FX rates** — no live feed; rates drift until `FX_RATES_JSON` is updated.
-3. **Seat reservation is advisory** — availability is checked but not locked, so
-   concurrent bookings can still oversell. Needs row-level locking.
+3. **User cancellation does not return seats** — only the expiry sweep does. A
+   cancel endpoint must call `releaseSeats` under the same status guard.
 4. **Rate limiting is per-instance** — the global ceiling scales with instance count.
 5. **Round-trip pairing is naive** — the database provider takes a cartesian
    product capped at 40×40 rather than using real fare-combinability rules.
 6. **No promo code logic** — `promoCode` is accepted and ignored; discount is always 0.
-7. **No tests.** Everything above was verified by hand, once.
-8. **English only** — no Bangla localization yet.
-9. **Multi-city search** unsupported; one-way and round-trip only.
+7. **Amadeus has no fare calendar** — calendars fall back to local inventory even
+   when Amadeus is the primary provider, reported as `degraded: true`.
+8. **Tests cover logic, not routes** — 182 unit tests over pricing, validation,
+   and fallback rules; the route handlers themselves were exercised by hand.
+9. **English only** — Bangla names exist in the ancillary catalog, but no UI
+   localization.
+10. **Multi-city search** unsupported; one-way and round-trip only.
 
 ## Next
 
-- **Phase 2** — fare matrix calendar, price alerts, ancillaries, automated tests
+- Row-level locking so concurrent bookings cannot oversell a flight
+- Stripe flow exercised against test keys
 - **Phase 3** — mobile app, white-label partner portals, Bangla localization

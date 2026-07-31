@@ -10,6 +10,11 @@ import {
   MAX_SELECTIONS,
   priceAncillaries,
 } from "@/lib/ancillaries/pricing";
+import {
+  reserveSeats,
+  seatsHeldBy,
+  SeatUnavailableError,
+} from "@/lib/inventory/seats";
 
 // Excludes look-alike characters so refs survive being read over the phone.
 const generateBookingRef = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 10);
@@ -115,50 +120,57 @@ export async function POST(req: NextRequest) {
     const totalPrice = quote.total + extras.total;
     const finalPrice = totalPrice - discount;
 
-    const booking = await db
-      .insert(bookings)
-      .values({
-        bookingRef: generateBookingRef(),
-        userId: session.user.id,
-        flightId: quote.flightId,
-        offerSource: quote.source,
-        offerId: body.offerId ?? null,
-        itinerary: quote.itinerary,
-        status: "pending_payment",
-        passengers: body.passengers,
-        cabinClass: quote.cabinClass,
-        totalPrice,
-        discount,
-        finalPrice,
-        currency: quote.currency,
-        ancillaries: extras.items,
-        ancillariesTotal: extras.total,
-        paymentMethod: body.paymentMethod,
-      })
-      .returning();
+    const seatsNeeded = seatsHeldBy(body.passengers);
 
-    if (!booking[0]) {
-      return NextResponse.json(
-        { error: "Failed to create booking" },
-        { status: 500 }
-      );
-    }
+    // Seats and booking commit together: if the insert fails, the seats go
+    // back; if the seats are gone, no booking is written.
+    const booking = await db.transaction(async (tx) => {
+      if (quote.flightId) {
+        await reserveSeats(tx, quote.flightId, quote.cabinClass, seatsNeeded);
+      }
 
-    if (body.paymentMethod) {
-      await db.insert(payments).values({
-        bookingId: booking[0].id,
-        amount: finalPrice,
-        currency: quote.currency,
-        status: "pending",
-        paymentMethod: body.paymentMethod,
-      });
-    }
+      const rows = await tx
+        .insert(bookings)
+        .values({
+          bookingRef: generateBookingRef(),
+          userId: session.user.id,
+          flightId: quote.flightId,
+          offerSource: quote.source,
+          offerId: body.offerId ?? null,
+          itinerary: quote.itinerary,
+          status: "pending_payment",
+          passengers: body.passengers,
+          cabinClass: quote.cabinClass,
+          totalPrice,
+          discount,
+          finalPrice,
+          currency: quote.currency,
+          ancillaries: extras.items,
+          ancillariesTotal: extras.total,
+          paymentMethod: body.paymentMethod,
+        })
+        .returning();
+
+      if (!rows[0]) throw new Error("Booking insert returned no row");
+
+      if (body.paymentMethod) {
+        await tx.insert(payments).values({
+          bookingId: rows[0].id,
+          amount: finalPrice,
+          currency: quote.currency,
+          status: "pending",
+          paymentMethod: body.paymentMethod,
+        });
+      }
+
+      return rows[0];
+    });
 
     return NextResponse.json(
       {
-        bookingId: booking[0].id,
-        bookingRef: booking[0].bookingRef,
-        status: booking[0].status,
+        bookingId: booking.id,
+        bookingRef: booking.bookingRef,
+        status: booking.status,
         farePrice: quote.total,
         ancillaries: extras.items,
         ancillariesTotal: extras.total,
@@ -173,6 +185,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: error.message, code: error.code },
         { status: 400 }
+      );
+    }
+    if (error instanceof SeatUnavailableError) {
+      // Someone else took the last seats between shopping and booking.
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: 409 }
       );
     }
     console.error("Booking creation error:", error);

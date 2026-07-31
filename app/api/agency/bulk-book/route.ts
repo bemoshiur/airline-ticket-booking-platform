@@ -3,6 +3,11 @@ import { db, bookings, payments, flights, organizations } from "@/lib/db";
 import { auth } from "@/auth";
 import { customAlphabet } from "nanoid";
 import { eq } from "drizzle-orm";
+import {
+  reserveSeats,
+  seatsHeldBy,
+  SeatUnavailableError,
+} from "@/lib/inventory/seats";
 
 const generateBookingRef = customAlphabet(
   "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
@@ -89,10 +94,10 @@ export async function POST(req: NextRequest) {
     const priceWithMarkup = Math.floor(cabinPrice * (1 + agencyMarkup / 100));
 
     // Create bookings in transaction
-    const createdBookings = [];
+    // First pass: validate every batch before writing anything.
+    const batches: unknown[][] = [];
     let totalSeatsNeeded = 0;
 
-    // First pass: validate all batches and count seats
     for (const passengers of passengerBatches) {
       if (!Array.isArray(passengers) || passengers.length === 0) {
         continue;
@@ -103,60 +108,76 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
-      totalSeatsNeeded += passengers.length;
+      batches.push(passengers);
+      totalSeatsNeeded += seatsHeldBy(passengers as { type?: string }[]);
     }
 
-    // Check seat availability
-    if (totalSeatsNeeded > (flight[0].seatsAvailable || 0)) {
+    if (batches.length === 0) {
       return NextResponse.json(
-        { error: `Not enough seats available (need ${totalSeatsNeeded}, have ${flight[0].seatsAvailable})` },
+        { error: "No passengers to book" },
         { status: 400 }
       );
     }
 
-    // Second pass: create bookings
-    for (const passengers of passengerBatches) {
-      if (!Array.isArray(passengers) || passengers.length === 0) {
-        continue;
-      }
+    // One transaction for the whole request: seats are taken atomically, and a
+    // failure part-way through leaves neither partial bookings nor lost seats.
+    const createdBookings = await db.transaction(async (tx) => {
+      await reserveSeats(tx, flightId, cabinClass, totalSeatsNeeded);
 
-      const totalPrice = priceWithMarkup * passengers.length;
-      const bookingRef = generateBookingRef();
+      const created: {
+        bookingId: string;
+        bookingRef: string;
+        passengers: number;
+        totalPrice: number;
+      }[] = [];
 
-      const booking = await db
-        .insert(bookings)
-        .values({
-          bookingRef,
-          userId: session.user.id as string,
-          orgId: agency[0].id,
-          flightId,
-          status: "confirmed", // Agency bookings auto-confirmed
-          passengers,
-          cabinClass,
-          totalPrice,
-          finalPrice: totalPrice,
-        })
-        .returning();
+      for (const passengers of batches) {
+        const totalPrice = priceWithMarkup * passengers.length;
 
-      if (booking[0]) {
-        createdBookings.push({
+        const booking = await tx
+          .insert(bookings)
+          .values({
+            bookingRef: generateBookingRef(),
+            userId: session.user.id as string,
+            orgId: agency[0].id,
+            flightId,
+            status: "confirmed", // Agency bookings are auto-confirmed
+            passengers,
+            cabinClass,
+            totalPrice,
+            finalPrice: totalPrice,
+          })
+          .returning();
+
+        if (!booking[0]) throw new Error("Booking insert returned no row");
+
+        created.push({
           bookingId: booking[0].id,
           bookingRef: booking[0].bookingRef,
           passengers: passengers.length,
           totalPrice,
         });
       }
-    }
+
+      return created;
+    });
 
     return NextResponse.json(
       {
         bookingsCreated: createdBookings.length,
         bookings: createdBookings,
+        seatsReserved: totalSeatsNeeded,
         totalRevenue: createdBookings.reduce((sum, b) => sum + b.totalPrice, 0),
       },
       { status: 201 }
     );
   } catch (error) {
+    if (error instanceof SeatUnavailableError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: 409 }
+      );
+    }
     console.error("Bulk booking error:", error);
     return NextResponse.json(
       { error: "Failed to create bulk bookings" },
