@@ -149,13 +149,17 @@ Check before deploying:
 5. **Round-trip pairing is naive** — the database provider takes a cartesian
    product capped at 40×40 rather than using real fare-combinability rules.
 6. **No promo code logic** — `promoCode` is accepted and ignored; discount is always 0.
-7. **Amadeus has no fare calendar** — calendars fall back to local inventory even
+7. **`npm audit` reports 7 findings**, all transitive dev-tooling paths (esbuild's
+   dev-server, postcss/sharp bundled inside `next`), none reachable at runtime.
+   `npm audit fix --force` "fixes" them by downgrading Next.js to 9.3.3 — do not
+   run it. Left as-is pending upstream updates to `next` and `drizzle-kit`.
+8. **Amadeus has no fare calendar** — calendars fall back to local inventory even
    when Amadeus is the primary provider, reported as `degraded: true`.
-8. **Tests cover logic, not routes** — 182 unit tests over pricing, validation,
+9. **Tests cover logic, not routes** — 191 unit tests over pricing, validation,
    and fallback rules; the route handlers themselves were exercised by hand.
-9. **English only** — Bangla names exist in the ancillary catalog, but no UI
-   localization.
-10. **Multi-city search** unsupported; one-way and round-trip only.
+10. **English only** — Bangla names exist in the ancillary catalog, but no UI
+    localization.
+11. **Multi-city search** unsupported; one-way and round-trip only.
 
 ## Next
 
