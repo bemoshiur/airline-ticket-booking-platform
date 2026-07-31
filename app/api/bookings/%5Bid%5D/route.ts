@@ -17,6 +17,8 @@ export async function GET(
     const booking = await db
       .select({
         id: bookings.id,
+        userId: bookings.userId,
+        orgId: bookings.orgId,
         bookingRef: bookings.bookingRef,
         status: bookings.status,
         passengers: bookings.passengers,
@@ -59,11 +61,24 @@ export async function GET(
       );
     }
 
-    if (booking[0].id && booking[0].id !== session.user.id) {
-      // TODO: Fix this - need to check ownership properly
+    // Authorization check: user owns booking, agency owns booking, or superadmin
+    const isOwner = booking[0].userId === session.user.id;
+    const isAgencyOwner =
+      session.user.role === "agency" &&
+      booking[0].orgId === session.user.orgId;
+    const isAdmin = session.user.role === "superadmin";
+
+    if (!isOwner && !isAgencyOwner && !isAdmin) {
+      // Return 404 to avoid revealing booking existence
+      return NextResponse.json(
+        { error: "Booking not found" },
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json(booking[0]);
+    // Return booking (exclude sensitive internal fields)
+    const { userId, orgId, ...safeBooking } = booking[0];
+    return NextResponse.json(safeBooking);
   } catch (error) {
     console.error("Booking fetch error:", error);
     return NextResponse.json(
