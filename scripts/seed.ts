@@ -1,4 +1,4 @@
-import { db, airlines, airports } from "@/lib/db";
+import { db, airlines, airports, flights } from "@/lib/db";
 
 const AIRLINES_DATA = [
   {
@@ -45,15 +45,11 @@ const AIRPORTS_DATA = [
 async function seed() {
   try {
     console.log("Seeding airlines...");
-    // Delete existing to avoid duplicates
-    // await db.delete(airlines); // Be careful with this
-
     for (const airline of AIRLINES_DATA) {
       try {
         await db.insert(airlines).values(airline);
         console.log(`✓ Inserted ${airline.name}`);
       } catch (e) {
-        // Likely duplicate, skip
         console.log(`⊘ Skipped ${airline.name} (likely exists)`);
       }
     }
@@ -64,8 +60,105 @@ async function seed() {
         await db.insert(airports).values(airport);
         console.log(`✓ Inserted ${airport.city}`);
       } catch (e) {
-        // Likely duplicate, skip
         console.log(`⊘ Skipped ${airport.city} (likely exists)`);
+      }
+    }
+
+    console.log("Seeding flights...");
+
+    // Get airline and airport IDs for flight creation
+    const ekAirline = await db.select().from(airlines).where(eq(airlines.iataCode, "EK")).limit(1);
+    const qrAirline = await db.select().from(airlines).where(eq(airlines.iataCode, "QR")).limit(1);
+    const sqAirline = await db.select().from(airlines).where(eq(airlines.iataCode, "SQ")).limit(1);
+    const tgAirline = await db.select().from(airlines).where(eq(airlines.iataCode, "TG")).limit(1);
+
+    const dacAirport = await db.select().from(airports).where(eq(airports.iataCode, "DAC")).limit(1);
+    const dxbAirport = await db.select().from(airports).where(eq(airports.iataCode, "DXB")).limit(1);
+    const kulAirport = await db.select().from(airports).where(eq(airports.iataCode, "KUL")).limit(1);
+    const bkkAirport = await db.select().from(airports).where(eq(airports.iataCode, "BKK")).limit(1);
+
+    if (!ekAirline[0] || !dacAirport[0]) {
+      console.warn("⚠ Airlines or airports not found, skipping flights");
+      process.exit(1);
+    }
+
+    // Create sample flights
+    const sampleFlights = [
+      // DAC to DXB
+      {
+        airlineId: ekAirline[0].id,
+        flightNumber: "EK570",
+        departureAirportId: dacAirport[0].id,
+        arrivalAirportId: dxbAirport[0].id,
+        departureTime: new Date(Date.now() + 86400000), // Tomorrow 10:00
+        arrivalTime: new Date(Date.now() + 86400000 + 14400000), // Tomorrow 14:00
+        durationMinutes: 240,
+        aircraftType: "Boeing 777",
+        stops: 0,
+        basePrice: 85000, // 850 BDT
+        seatsAvailable: 250,
+        seatsEconomy: 200,
+        seatsBusiness: 30,
+        seatsFirst: 20,
+      },
+      {
+        airlineId: qrAirline[0].id,
+        flightNumber: "QR627",
+        departureAirportId: dacAirport[0].id,
+        arrivalAirportId: dxbAirport[0].id,
+        departureTime: new Date(Date.now() + 86400000 + 3600000), // Tomorrow 11:00
+        arrivalTime: new Date(Date.now() + 86400000 + 18000000), // Tomorrow 15:00
+        durationMinutes: 240,
+        aircraftType: "Airbus A380",
+        stops: 0,
+        basePrice: 82000,
+        seatsAvailable: 300,
+        seatsEconomy: 250,
+        seatsBusiness: 35,
+        seatsFirst: 15,
+      },
+      // DAC to KUL
+      {
+        airlineId: sqAirline[0].id,
+        flightNumber: "SQ403",
+        departureAirportId: dacAirport[0].id,
+        arrivalAirportId: kulAirport[0].id,
+        departureTime: new Date(Date.now() + 86400000 + 7200000), // Tomorrow 12:00
+        arrivalTime: new Date(Date.now() + 86400000 + 28800000), // Tomorrow 20:00
+        durationMinutes: 360,
+        aircraftType: "Airbus A350",
+        stops: 0,
+        basePrice: 75000,
+        seatsAvailable: 280,
+        seatsEconomy: 230,
+        seatsBusiness: 35,
+        seatsFirst: 15,
+      },
+      // DAC to BKK
+      {
+        airlineId: tgAirline[0].id,
+        flightNumber: "TG312",
+        departureAirportId: dacAirport[0].id,
+        arrivalAirportId: bkkAirport[0].id,
+        departureTime: new Date(Date.now() + 86400000 + 10800000), // Tomorrow 13:00
+        arrivalTime: new Date(Date.now() + 86400000 + 32400000), // Tomorrow 21:00
+        durationMinutes: 360,
+        aircraftType: "Boeing 787",
+        stops: 1,
+        basePrice: 68000,
+        seatsAvailable: 260,
+        seatsEconomy: 210,
+        seatsBusiness: 35,
+        seatsFirst: 15,
+      },
+    ];
+
+    for (const flight of sampleFlights) {
+      try {
+        await db.insert(flights).values(flight);
+        console.log(`✓ Created flight ${flight.flightNumber}`);
+      } catch (e) {
+        console.log(`⊘ Skipped flight ${flight.flightNumber}`);
       }
     }
 
@@ -76,5 +169,7 @@ async function seed() {
     process.exit(1);
   }
 }
+
+import { eq } from "drizzle-orm";
 
 seed();
