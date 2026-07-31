@@ -15,11 +15,14 @@ import { db, flights, airlines, airports } from "@/lib/db";
 import { ProviderError } from "../errors";
 import { offerVault } from "../cache";
 import type { FlightProvider } from "../provider";
-import { localDayBoundsUtc, qualifiedFlightNumber } from "../time";
+import { localDateOf, localDayBoundsUtc, qualifiedFlightNumber } from "../time";
 import {
   CABIN_MULTIPLIER,
+  enumerateDates,
   seatCount,
   type CabinClass,
+  type FareCalendarEntry,
+  type FareCalendarQuery,
   type FlightOffer,
   type Itinerary,
   type PriceBreakdown,
@@ -104,6 +107,81 @@ export class DatabaseProvider implements FlightProvider {
     return offers
       .sort((a, b) => a.price.total - b.price.total)
       .slice(0, query.maxResults);
+  }
+
+  /**
+   * One query for the whole window, bucketed by local departure date. Fanning
+   * out a search per day would be up to 62 round trips for a single calendar.
+   */
+  async fareCalendar(query: FareCalendarQuery): Promise<FareCalendarEntry[]> {
+    const [origin, destination] = await Promise.all([
+      airportByCode(query.from),
+      airportByCode(query.to),
+    ]);
+
+    if (!origin || !destination) {
+      throw new ProviderError(
+        "invalid_request",
+        PROVIDER,
+        "We do not serve one of those airports yet"
+      );
+    }
+
+    // Widen by a day at each end: a local date maps to a UTC span that can
+    // start before and finish after the naive UTC window.
+    const start = localDayBoundsUtc(query.startDate, origin.timezone).start;
+    const end = localDayBoundsUtc(query.endDate, origin.timezone).end;
+
+    const rows = await db
+      .select({ flight: flights, airline: airlines })
+      .from(flights)
+      .innerJoin(airlines, eq(flights.airlineId, airlines.id))
+      .where(
+        and(
+          eq(flights.departureAirportId, origin.id),
+          eq(flights.arrivalAirportId, destination.id),
+          gte(flights.departureTime, start),
+          lte(flights.departureTime, end)
+        )
+      );
+
+    const needed = query.adults + query.children;
+    const buckets = new Map<string, { total: number; perAdult: number; count: number }>();
+
+    for (const row of rows) {
+      if (cabinSeats(row.flight, query.cabinClass) < needed) continue;
+
+      const date = localDateOf(row.flight.departureTime, origin.timezone);
+      const leg: LegRow = {
+        flight: row.flight,
+        airline: row.airline,
+        originCode: origin.iataCode,
+        destinationCode: destination.iataCode,
+      };
+      const price = buildPrice([leg], query);
+
+      const perAdult = price.perPassengerType.adult;
+      const existing = buckets.get(date);
+      if (!existing) {
+        buckets.set(date, { total: price.total, perAdult, count: 1 });
+      } else {
+        existing.count++;
+        existing.total = Math.min(existing.total, price.total);
+        existing.perAdult = Math.min(existing.perAdult, perAdult);
+      }
+    }
+
+    // Every requested day appears, priced or not, so the calendar has no holes.
+    return enumerateDates(query.startDate, query.endDate).map((date) => {
+      const bucket = buckets.get(date);
+      return {
+        date,
+        total: bucket?.total ?? null,
+        perAdult: bucket?.perAdult ?? null,
+        currency: query.currency,
+        flightCount: bucket?.count ?? 0,
+      };
+    });
   }
 
   async priceOffer(offerId: string): Promise<PricedOffer> {
@@ -341,7 +419,15 @@ function buildItinerary(leg: LegRow, cabin: CabinClass): Itinerary {
   };
 }
 
-function buildPrice(legs: LegRow[], query: SearchQuery): PriceBreakdown {
+/** The subset of a query that determines a fare — shared by search and calendar. */
+interface PricingParty {
+  adults: number;
+  children: number;
+  infants: number;
+  cabinClass: CabinClass;
+}
+
+function buildPrice(legs: LegRow[], query: PricingParty): PriceBreakdown {
   const multiplier = CABIN_MULTIPLIER[query.cabinClass];
   const adultFare = legs.reduce(
     (sum, leg) => sum + Math.round(leg.flight.basePrice * multiplier),

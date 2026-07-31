@@ -87,3 +87,9 @@ export const offerVault = new TtlCache<VaultedOffer>(15 * 60 * 1000, 5000);
 
 /** Shopping responses, keyed by a canonical form of the search query. */
 export const searchCache = new TtlCache<unknown>(3 * 60 * 1000, 500);
+
+/**
+ * Fare calendars. Held longer than a search: a whole-month view is expensive
+ * to build and a few minutes of staleness on a browse surface is acceptable.
+ */
+export const calendarCache = new TtlCache<unknown>(10 * 60 * 1000, 200);

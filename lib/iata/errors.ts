@@ -9,10 +9,19 @@ export type ProviderErrorCode =
   | "no_availability";
 
 /**
+ * Marker used instead of `instanceof`. Next bundles server code more than once
+ * (node and edge runtimes), and a duplicated module graph gives two distinct
+ * ProviderError classes — `instanceof` then returns false and the registry
+ * silently stops falling back. A symbol on the instance survives that.
+ */
+const PROVIDER_ERROR = Symbol.for("airline.ProviderError");
+
+/**
  * Errors raised by a distribution provider. `retryable` tells the registry
  * whether falling back to another provider is worth attempting.
  */
 export class ProviderError extends Error {
+  readonly [PROVIDER_ERROR] = true;
   readonly code: ProviderErrorCode;
   readonly provider: string;
   readonly status: number;
@@ -31,6 +40,15 @@ export class ProviderError extends Error {
     this.status = options.status ?? httpStatusFor(code);
     this.retryable = RETRYABLE.has(code);
   }
+}
+
+export function isProviderError(error: unknown): error is ProviderError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    PROVIDER_ERROR in error &&
+    (error as Record<symbol, unknown>)[PROVIDER_ERROR] === true
+  );
 }
 
 const RETRYABLE = new Set<ProviderErrorCode>([
@@ -63,7 +81,7 @@ export function toClientError(error: unknown): {
   status: number;
   body: { error: string; code: string };
 } {
-  if (error instanceof ProviderError) {
+  if (isProviderError(error)) {
     return {
       status: error.status,
       body: { error: error.message, code: error.code },

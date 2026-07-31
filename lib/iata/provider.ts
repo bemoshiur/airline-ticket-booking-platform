@@ -1,4 +1,6 @@
 import type {
+  FareCalendarEntry,
+  FareCalendarQuery,
   FlightOffer,
   PricedOffer,
   ProviderName,
@@ -25,6 +27,17 @@ export interface FlightProvider {
    * (`offer_expired`) once the offer can no longer be ticketed.
    */
   priceOffer(offerId: string, signal?: AbortSignal): Promise<PricedOffer>;
+
+  /**
+   * Cheapest fare per departure date across a window. Optional: a provider
+   * without a cheap bulk-pricing endpoint should omit it rather than fan out
+   * one shopping call per day. The registry falls back to local inventory and
+   * flags the result degraded.
+   */
+  fareCalendar?(
+    query: FareCalendarQuery,
+    signal?: AbortSignal
+  ): Promise<FareCalendarEntry[]>;
 }
 
 /** Stable cache key for a shopping request. */

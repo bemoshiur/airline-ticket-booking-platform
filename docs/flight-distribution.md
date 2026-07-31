@@ -90,3 +90,41 @@ Redis when a precise global limit matters.
 
 Throw `ProviderError` with a `retryable` code so the registry knows whether
 falling back is safe.
+
+## Fare calendar
+
+`POST /api/flights/fare-calendar` returns the cheapest total per departure date
+across a window (max 62 days), plus the cheapest and dearest priced days for
+colouring the UI. Days with no inventory come back with `total: null` rather
+than being omitted, so the calendar has no holes.
+
+These are browse prices. Booking still reprices through `/api/flights/price`.
+
+`fareCalendar` is **optional** on `FlightProvider`. A provider without a cheap
+bulk-pricing endpoint should omit it rather than fan out one shopping call per
+day against a metered API; the registry then serves local inventory and flags
+`degraded: true`. The database provider implements it with a single query over
+the whole window, bucketed by local date at the origin airport.
+
+Amadeus does not implement it yet — its Flight Cheapest Date Search covers only
+a subset of routes, so calendars currently come from local inventory even when
+`FLIGHT_PROVIDER=amadeus`. That is reported honestly as `degraded: true`.
+
+## Testing
+
+```bash
+npm test              # vitest, 119 tests
+npm run test:watch
+```
+
+Tests run with `TZ=UTC` pinned — flight times are timezone-sensitive and a
+developer's local zone must not change what the suite asserts.
+
+Covered: FX conversion and overrides, local-day bounds across DST and
+half-hour offsets, TTL cache eviction, rate-limit windows, search and calendar
+query validation, and the registry's fallback policy (which failures may
+degrade to local inventory and which must surface).
+
+`ProviderError` is identified by a `Symbol.for` brand, not `instanceof` — Next
+bundles server code more than once, and a duplicated module graph would
+otherwise make the fallback check silently return false.

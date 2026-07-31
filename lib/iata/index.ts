@@ -9,12 +9,15 @@
  * and the id carries that provenance.
  */
 
-import { ProviderError } from "./errors";
-import { offerVault, searchCache } from "./cache";
+import { isProviderError, ProviderError } from "./errors";
+import { calendarCache, offerVault, searchCache } from "./cache";
 import { searchCacheKey, type FlightProvider } from "./provider";
 import { AmadeusProvider } from "./providers/amadeus";
 import { DatabaseProvider } from "./providers/database";
 import type {
+  FareCalendarEntry,
+  FareCalendarQuery,
+  FareCalendarResult,
   FlightOffer,
   PricedOffer,
   ProviderName,
@@ -23,7 +26,7 @@ import type {
 } from "./types";
 
 export * from "./types";
-export { ProviderError, toClientError } from "./errors";
+export { ProviderError, isProviderError, toClientError } from "./errors";
 
 const providers: Record<ProviderName, FlightProvider> = {
   amadeus: new AmadeusProvider(),
@@ -69,14 +72,12 @@ export async function searchFlights(
     offers = await providers[primary].searchOffers(query, signal);
   } catch (error) {
     const canFallback =
-      primary !== "database" &&
-      error instanceof ProviderError &&
-      error.retryable;
+      primary !== "database" && isProviderError(error) && error.retryable;
 
     if (!canFallback) throw error;
 
     console.error(
-      `Provider ${primary} failed (${(error as ProviderError).code}); ` +
+      `Provider ${primary} failed (${error.code}); ` +
         "falling back to local inventory"
     );
     offers = await providers.database.searchOffers(query, signal);
@@ -97,6 +98,87 @@ export async function searchFlights(
   if (!degraded) searchCache.set(cacheKey, result);
 
   return result;
+}
+
+/**
+ * Cheapest fare per departure date across a window.
+ *
+ * A provider that cannot price a whole window cheaply omits `fareCalendar`; we
+ * serve local inventory and flag `degraded` rather than fanning out one
+ * shopping call per day against a metered API.
+ */
+export async function fareCalendar(
+  query: FareCalendarQuery,
+  signal?: AbortSignal
+): Promise<FareCalendarResult> {
+  const cacheKey = `cal:${activeProviderName()}:${fareCalendarCacheKey(query)}`;
+  const cached = calendarCache.get(cacheKey) as FareCalendarResult | undefined;
+  if (cached) return cached;
+
+  const primary = primaryName();
+  const provider = providers[primary];
+  const canServe = provider.isConfigured() && provider.fareCalendar;
+
+  let entries: FareCalendarEntry[];
+  let source: ProviderName = primary;
+  let degraded = false;
+
+  if (canServe) {
+    try {
+      entries = await provider.fareCalendar!(query, signal);
+    } catch (error) {
+      if (!isProviderError(error) || !error.retryable) throw error;
+      console.error(
+        `Provider ${primary} calendar failed (${error.code}); ` +
+          "falling back to local inventory"
+      );
+      entries = await providers.database.fareCalendar!(query, signal);
+      source = "database";
+      degraded = true;
+    }
+  } else {
+    entries = await providers.database.fareCalendar!(query, signal);
+    degraded = primary !== "database";
+    source = "database";
+  }
+
+  const priced = entries.filter(
+    (entry): entry is FareCalendarEntry & { total: number } => entry.total !== null
+  );
+
+  const result: FareCalendarResult = {
+    entries,
+    query,
+    source,
+    degraded,
+    cheapest: extreme(priced, (a, b) => a.total < b.total),
+    dearest: extreme(priced, (a, b) => a.total > b.total),
+    searchedAt: new Date().toISOString(),
+  };
+
+  if (!degraded) calendarCache.set(cacheKey, result);
+  return result;
+}
+
+function extreme<T>(items: T[], better: (a: T, b: T) => boolean): T | null {
+  return items.reduce<T | null>(
+    (best, item) => (best === null || better(item, best) ? item : best),
+    null
+  );
+}
+
+function fareCalendarCacheKey(q: FareCalendarQuery): string {
+  return [
+    q.from,
+    q.to,
+    q.startDate,
+    q.endDate,
+    q.adults,
+    q.children,
+    q.infants,
+    q.cabinClass,
+    q.currency,
+  ].join("|");
 }
 
 /**

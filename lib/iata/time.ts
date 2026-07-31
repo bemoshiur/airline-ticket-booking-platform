@@ -71,6 +71,20 @@ function isValidTimeZone(timeZone: string): boolean {
   }
 }
 
+/** The local calendar date (`YYYY-MM-DD`) of an instant in `timeZone`. */
+export function localDateOf(instant: Date, timeZone?: string | null): string {
+  if (!timeZone || !isValidTimeZone(timeZone)) {
+    return instant.toISOString().slice(0, 10);
+  }
+  // en-CA formats as YYYY-MM-DD.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(instant);
+}
+
 /**
  * Join a carrier code to a flight number without doubling it — schedule data
  * stores "EK570" in some feeds and "570" in others.
