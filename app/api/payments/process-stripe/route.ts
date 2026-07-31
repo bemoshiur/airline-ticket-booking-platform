@@ -60,32 +60,52 @@ export async function POST(req: NextRequest) {
     }
 
     // Use booking's authoritative finalPrice and currency
-    const amount = booking[0].finalPrice;
+    const amountBDT = booking[0].finalPrice;
     const currency = booking[0].currency || "BDT";
 
-    // Create Stripe payment intent
-    // Note: Stripe doesn't support BDT; in production, convert BDT to USD at current rate
+    // For MVP: Use a fixed exchange rate (1 BDT ≈ 0.0095 USD)
+    // In production: Fetch real-time rate from currency API
+    const BDT_TO_USD_RATE = 0.0095;
+    const amountUSD = Math.round(amountBDT * BDT_TO_USD_RATE * 100); // Convert to USD cents for Stripe
+
+    // Safeguard: minimum charge (e.g., $0.50)
+    if (amountUSD < 50) {
+      return NextResponse.json(
+        { error: "Booking amount too low for card processing (min ~500 BDT)" },
+        { status: 400 }
+      );
+    }
+
+    // Create Stripe payment intent in USD (Stripe doesn't support BDT)
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: amount, // Amount in smallest unit (poisha for BDT equivalent)
-      currency: "usd", // Stripe limitation; convert BDT → USD in production
+      amount: amountUSD, // Amount in USD cents (smallest Stripe unit)
+      currency: "usd",
       metadata: {
         bookingId,
         bookingRef: booking[0].bookingRef,
+        amountBDT,
       },
     });
 
-    // Update payment record in DB
-    await db
-      .insert(payments)
-      .values({
-        bookingId,
-        amount,
-        currency: "BDT",
-        status: "processing",
-        paymentMethod: "stripe",
-        stripePaymentIntentId: paymentIntent.id,
-        processorResponse: paymentIntent as any,
-      });
+    // Store payment record with BOTH original and converted amounts
+    // Do NOT store sensitive fields like client_secret
+    const safeProcessorData = {
+      id: paymentIntent.id,
+      status: paymentIntent.status,
+      amountUSD,
+      amountBDT,
+      fxRate: BDT_TO_USD_RATE,
+    };
+
+    await db.insert(payments).values({
+      bookingId,
+      amount: amountBDT, // Store in booking currency
+      currency: "BDT",
+      status: "processing",
+      paymentMethod: "stripe",
+      stripePaymentIntentId: paymentIntent.id,
+      processorResponse: safeProcessorData, // Only safe, non-sensitive fields
+    });
 
     return NextResponse.json(
       {
