@@ -10,6 +10,7 @@ import {
   jsonb,
   index,
   uniqueIndex,
+  unique,
   pgEnum,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
@@ -391,6 +392,78 @@ export const adminSettings = pgTable("admin_settings", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const priceAlertStatusEnum = pgEnum("price_alert_status", [
+  "active",
+  "paused",
+  "triggered",
+  "expired",
+]);
+
+/**
+ * A saved route the user wants watched. A background sweep re-shops each active
+ * alert and notifies when the fare drops below the target, or below the lowest
+ * price seen so far when no target was given.
+ */
+export const priceAlerts = pgTable(
+  "price_alerts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull(),
+    origin: varchar("origin", { length: 3 }).notNull(),
+    destination: varchar("destination", { length: 3 }).notNull(),
+    departureDate: varchar("departure_date", { length: 10 }).notNull(),
+    returnDate: varchar("return_date", { length: 10 }),
+    adults: integer("adults").notNull().default(1),
+    children: integer("children").notNull().default(0),
+    infants: integer("infants").notNull().default(0),
+    cabinClass: cabinClassEnum("cabin_class").notNull().default("economy"),
+    currency: varchar("currency", { length: 3 }).notNull().default("BDT"),
+    /** Notify at or below this. Null means "notify on any new low". */
+    targetPrice: integer("target_price"),
+    /** Total seen on the most recent sweep. */
+    lastSeenPrice: integer("last_seen_price"),
+    /** Cheapest total ever seen, the baseline a "new low" is measured against. */
+    lowestSeenPrice: integer("lowest_seen_price"),
+    status: priceAlertStatusEnum("status").notNull().default("active"),
+    /** Suppresses repeat notifications for the same drop. */
+    lastNotifiedAt: timestamp("last_notified_at", { withTimezone: true }),
+    lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+    /** Consecutive sweep failures; a persistently failing alert is retired. */
+    failureCount: integer("failure_count").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    userIdIdx: index("price_alerts_user_id_idx").on(table.userId),
+    statusIdx: index("price_alerts_status_idx").on(table.status),
+    // The sweep claims the least recently checked active alerts.
+    sweepIdx: index("price_alerts_sweep_idx").on(
+      table.status,
+      table.lastCheckedAt
+    ),
+    // One alert per user per exact itinerary. NULLS NOT DISTINCT matters:
+    // returnDate is null for one-way watches, and Postgres would otherwise
+    // treat every one-way row as unique and let duplicates through.
+    uniquePerUser: unique("price_alerts_unique")
+      .on(
+        table.userId,
+        table.origin,
+        table.destination,
+        table.departureDate,
+        table.returnDate,
+        table.cabinClass,
+        table.adults,
+        table.children,
+        table.infants
+      )
+      .nullsNotDistinct(),
+  })
+);
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -430,3 +503,6 @@ export type InsertSupportTicket = typeof supportTickets.$inferInsert;
 
 export type AdminSetting = typeof adminSettings.$inferSelect;
 export type InsertAdminSetting = typeof adminSettings.$inferInsert;
+
+export type PriceAlert = typeof priceAlerts.$inferSelect;
+export type InsertPriceAlert = typeof priceAlerts.$inferInsert;
