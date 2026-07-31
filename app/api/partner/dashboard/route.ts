@@ -14,6 +14,14 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Fail closed: partner must have orgId
+    if (!session.user.orgId) {
+      return NextResponse.json(
+        { error: "Partner not properly configured" },
+        { status: 403 }
+      );
+    }
+
     // Get all referrals for this partner
     const referrals = await db
       .select({
@@ -26,7 +34,7 @@ export async function GET(req: NextRequest) {
         paidAt: partnerReferrals.paidAt,
       })
       .from(partnerReferrals)
-      .where(eq(partnerReferrals.partnerId, session.user.orgId || ""));
+      .where(eq(partnerReferrals.partnerId, session.user.orgId));
 
     // Calculate metrics
     const totalClicks = referrals.filter((r) => r.clickedAt).length;
